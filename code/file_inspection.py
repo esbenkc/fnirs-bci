@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import time
 
-raw_snirf = mne.io.read_raw_snirf("data/21-09-15_pretrain_2.snirf")
+raw_snirf = mne.io.read_raw_snirf("data/21-09-15_pretrain_1.snirf")
 print(raw_snirf.info)
 
 od = mne.preprocessing.nirs.optical_density(raw_snirf)
@@ -16,4 +16,4 @@ df = haemo.to_data_frame()
 
 print(raw_snirf.to_data_frame())
 print(od.to_data_frame())
-print(haemo.to_data_frame()[::200])
+print(haemo.to_data_frame())
