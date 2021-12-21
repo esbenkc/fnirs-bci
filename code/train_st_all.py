@@ -101,6 +101,7 @@ def preprocess(path, l_pass=0.7, h_pass=0.01, bandpass=True, short_ch_reg=True, 
     if bandpass:
         step_haemo = step_haemo.filter(
             h_pass, l_pass, h_trans_bandwidth=0.3, l_trans_bandwidth=h_pass*0.25)
+
     return step_haemo
 
 
@@ -210,10 +211,8 @@ def using_mstats(s):
     return mstats.winsorize(s, limits=[0.05, 0.05])
 
 
-wb = False
 v = True
 p = False
-train = True
 p_loss = False
 
 wb = train = True
@@ -482,19 +481,34 @@ if train:
         ic("Define the model architecture")
     inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
     if config.get("bidirectional"):
+        lstm_1 = keras.layers.Bidirectional(
+            keras.layers.LSTM(
+                config.get("units"),
+                activation=config.get("activation_function"),
+                dropout=config.get("dropout"),
+                return_sequences=True,
+            ))(inputs)
+        lstm_2 = keras.layers.Bidirectional(
+            keras.layers.LSTM(
+                config.get("units"),
+                activation=config.get("activation_function"),
+                dropout=config.get("dropout"),
+                return_sequences=True,
+            ))(lstm_1)
         lstm_out = keras.layers.Bidirectional(
             keras.layers.LSTM(
                 config.get("units"),
                 activation=config.get("activation_function"),
                 dropout=config.get("dropout"),
-            ))(inputs)
+            ))(lstm_2)
     else:
         lstm_out = keras.layers.LSTM(
             config.get("units"),
             activation=config.get("activation_function"),
             dropout=config.get("dropout"))(inputs)
 
-    outputs = keras.layers.Dense(1)(lstm_out)
+    dense_out = keras.layers.Dense(128, activation="relu")(lstm_out)
+    outputs = keras.layers.Dense(1)(dense_out)
 
     # if v:
     #     ic("Generate a learning rate schedule with exponential decay")
@@ -575,9 +589,9 @@ index = 0
 #     printProgressBar(index, len(dataset_val), length=50,
 #                      prefix=f"{bcolors.HEADER}Progress:", suffix=f"{index}/{len(dataset_val)}{bcolors.ENDC}")
 
-#  std = sqrt(mean(x)) , where x = abs(a - a. mean())**2
-print(
-    f"{bcolors.HEADER}Mean delta (distance from real): {bcolors.WARN}{np.mean(np.abs(diff))}{bcolors.ENDC}\n{bcolors.HEADER}Chance delta (distance from real): {bcolors.WARN}{chance} {bcolors.ENDC}\n{bcolors.HEADER}Standard deviation: {bcolors.WARN}1.0{bcolors.ENDC}\n{bcolors.HEADER}Mean: {bcolors.WARN}0.0{bcolors.ENDC}")
+
+# print(
+#     f"{bcolors.HEADER}Mean delta (distance from real): {bcolors.WARN}{np.mean(np.abs(diff))}{bcolors.ENDC}\n{bcolors.HEADER}Chance delta (distance from real): {bcolors.WARN}{chance} {bcolors.ENDC}\n{bcolors.HEADER}Standard deviation: {bcolors.WARN}1.0{bcolors.ENDC}\n{bcolors.HEADER}Mean: {bcolors.WARN}0.0{bcolors.ENDC}")
 
 for batch in dataset_val.take(1):
     inputs, targets = batch

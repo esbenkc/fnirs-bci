@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import time
 
-raw_snirf = mne.io.read_raw_snirf("data/21-09-15_pretrain_1.snirf")
+raw_snirf = mne.io.read_raw_snirf("data/21-10-13_bci_task_1.snirf")
 print(raw_snirf.info)
 
 od = mne.preprocessing.nirs.optical_density(raw_snirf)

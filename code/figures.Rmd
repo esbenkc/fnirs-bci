@@ -36,11 +36,11 @@ p <- readMat("../data/extinction_coef.mat")[1]$extinct.coef %>%
            label="760 HbR", color=viridis(2, end=0.7)[2]) +
   scale_color_viridis(end=0.7, discrete=T) +
   theme(legend.position = c(0.8,0.7),
-        text = element_text(size=10, family="Inter"),
+        text = element_text(family="Inter"),
         panel.grid = element_blank(),
         legend.key.height = unit(0.45, "cm"))
 
-ggsave(paste0(output_dir, "absorption-spectrum.png"), p, units="cm", width=15, height=7.5)
+ggsave(paste0(output_dir, "absorption-spectrum.png"), p, units="cm", width=10, height=7.5)
 ```
 
 ## Probe positions
@@ -85,26 +85,26 @@ p <- rbind(detector_pos, source_pos) %>%
   aes(x, y, color = type, label = name) +
   annotation_custom(
     rasterGrob(readPNG("../media/10-20_bg.png"), interpolate=T),
-    xmin = -0.85, xmax = 0.85, ymin=-0.85) +
+    xmin = -1, xmax = 1, ymin=-1.1) +
   # geom_text_repel(size=2) +
   geom_point(size=1.5, alpha=0.9) +
-  annotate("text", size=3, label="Circle indicates the\n'equator' of the head", x = -1.4, y = 1.2, hjust=0, vjust=1, lineheight=1) +
+  annotate("text", label="Circle indicates the\n'equator' of the head", x = 1.2, y = 0.7, hjust=0, vjust=1, lineheight=1) +
   theme_classic() +
   scale_color_viridis(end=0.7, discrete=T) +
-  theme(legend.position = c(0.15,0.8),
+  theme(legend.position = c(0.65,0.55),
         legend.spacing.x = unit(0.1, "cm"),
         legend.title = element_blank(),
-        text = element_text(size=10, family="Inter"),
+        text = element_text(family="Inter"),
         panel.grid = element_blank(),
         axis.line = element_blank(),
         axis.title = element_blank(),
         axis.ticks = element_blank(),
         axis.text = element_blank(),
         legend.background = element_blank(),
-        legend.key.height = unit(0.3, "cm")) +
-  coord_cartesian(xlim=c(-1.4, 1.4), ylim=c(-1.2, 1.2))
+        legend.key.height = unit(0.5, "cm")) +
+  coord_cartesian(xlim=c(-1, 3), ylim=c(-1.3, 1.3), clip="off")
 
-ggsave(paste0(output_dir, "montage.png"), p, units="cm", width=7.5, height=7.5)
+ggsave(paste0(output_dir, "montage.png"), p, units="cm", width=9, height=7.5)
 
 ```
 

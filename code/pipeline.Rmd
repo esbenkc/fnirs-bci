@@ -58,6 +58,12 @@ Why use inverse matrix for multiplication:
   - $AX=B\Rightarrow A^{-1}X=A^{-1}B$
 - $(BA)^{-1}=A^{-1}B^{-1}$
 
+$$\begin{bmatrix}\Delta c_{HbO}(t) \\ \Delta c_{HbR}(t)\end{bmatrix} 
+= 
+\begin{bmatrix}\alpha_{HbO}(\lambda_1) & \alpha_{HbR} (\lambda_1) \\ \alpha_{HbO} (\lambda_2) & \alpha_{HbR} (\lambda_2) \end{bmatrix}^{-1}
+\begin{bmatrix}\Delta A(t, \lambda_1) \\ \Delta A(t, \lambda_2)\end{bmatrix}
+\dfrac{1}{l\times d}$$
+
 $$\dfrac{1}{hbo760\cdot hbr850 - hbr760\cdot hbo850}\begin{bmatrix}hbr850&-hbr760\\-hbo850&hbo760\end{bmatrix}\times\begin{bmatrix}760 & 0.9&...&-0.2\\850&-0.03&...&0.2\end{bmatrix}$$
 
 $$\begin{bmatrix}hbo760&hbr760\\hbo850&hbr850\end{bmatrix}$$
@@ -84,9 +90,17 @@ p = read_csv("data/distances.csv") %>%
 
 df_od <- df %>% 
   select(-c("X1", "time")) %>% 
-  mutate(across(where(is.numeric), ~ -log(.x / mean(.x)))) 
+  mutate(across(where(is.numeric), ~ -log(.x / mean(.x))))
+```
+$$\begin{bmatrix}\Delta c_{HbO}(t) \\ \Delta c_{HbR}(t)\end{bmatrix} 
+= 
+\begin{bmatrix}\alpha_{HbO}(\lambda_1) & \alpha_{HbR} (\lambda_1) \\ \alpha_{HbO} (\lambda_2) & \alpha_{HbR} (\lambda_2) \end{bmatrix}^{-1}
+\begin{bmatrix}\Delta A(t, \lambda_1) \\ \Delta A(t, \lambda_2)\end{bmatrix}
+\dfrac{1}{\rho\times dpf}$$
 
+where ΔA(t; λj) (j = 1,2) is the unit-less absorbance (optical density) variation of wavelength λj, αHbX(λj)is the extinction coefficient of HbX in μM−1 mm−1 (note that HbX ∊ {HbO, HbR}), d is the unit-less differential pathlength factor (DPF), and l is the distance (in millimeters) between an emitter and a detector.
 
+```{r}
 df_hb <- df_od %>%
   pivot_longer(cols=matches("S\\d*"), names_to="channel", values_to="signal") %>%
   # group_by(channel) %>% 
