@@ -53,12 +53,18 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
             sequence_stride=1,
         )
 
-        model = load_model(model_path)
-
         for batch in dataset.take(1):
             inputs, targets = batch
 
-        predictions = [model.predict(i[None, ...]) for i in inputs]
+        if "model" in model_path:
+            model = load_model(model_path)
+            predictions = [model.predict(i[None, ...]) for i in inputs]
+        elif model_path == "mean":
+            predictions = [np.mean(inputs, axis=1)]
+        elif model_path == "last_value":
+            predictions = [inputs[:, -1, 0]]
+        elif model_path == "gaussian_random":
+            predictions = [np.random.normal(0, 1, len(inputs))]
 
         print(
             f"{bcolors.HEADER}Start index: {start}\nStart padding shape: {np.array([nirs[i, 0] for i in range(start)]).shape}\nEvaulation shape: {np.array(np.concatenate(predictions)).flatten().shape}{bcolors.ENDC}")
@@ -84,7 +90,14 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
         for batch in dataset.take(1):
             inputs, targets = batch
 
-        predictions = [model.predict(i[None, ...]) for i in inputs]
+        if "model" in model_path:
+            predictions = [model.predict(i[None, ...]) for i in inputs]
+        elif model_path == "mean":
+            predictions = [np.mean(inputs, axis=1)]
+        elif model_path == "last_value":
+            predictions = [inputs[:, -1, 0]]
+        elif model_path == "gaussian_random":
+            predictions = [np.random.normal(0, 1, len(inputs))]
 
         df["Prediction_self_" + str(idx) + "_" + str(futures[idx])
            ] = np.concatenate(([nirs[i, 0] for i in range(start)], np.array(np.concatenate(predictions)).flatten()))
@@ -108,5 +121,8 @@ if __name__ == "__main__":
         model_paths=[
             "models/model-16.h5",
             "models/model-3-stack-16.h5",
-            "models/model-4.h5"],
-        futures=[16, 16, 4])
+            "models/model-4.h5",
+            "gaussian_random",
+            "mean",
+            "last_value", ],
+        futures=[16, 16, 4, 16, 16, 16])

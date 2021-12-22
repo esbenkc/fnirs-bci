@@ -1,4 +1,4 @@
-from train_st_esben import preprocess, visualize_loss, show_plot
+from helper_functions import preprocess, visualize_loss, show_plot
 import warnings
 from icecream import ic
 ic("Importing packages...")
@@ -18,8 +18,7 @@ with warnings.catch_warnings():
     import wandb
     from wandb.keras import WandbCallback
 
-    from absl import flags
-    from absl import app
+    import re
 
 
 def normalize(df, df_ref=None):
@@ -34,25 +33,9 @@ def normalize(df, df_ref=None):
     return df_norm
 
 
-# FLAGS = flags.FLAGS
-
-# flags.DEFINE_string('name', 'Jane Random', 'Your name.')
-# flags.DEFINE_integer('age', None, 'Your age in years.', lower_bound=0)
-# flags.DEFINE_enum('job', 'running', ['running', 'stopped'], 'Job status.')
-
-# flags.DEFINE_string('path', 'data/21-10-13_bci_task_1.snirf',
-#                     'Path to BCI task.')
-# flags.DEFINE_boolean('verbose', False, 'Produces debugging output.')
-# flags.DEFINE_boolean('trainable', False, 'Is the LSTM layer trainable?')
-# flags.DEFINE_boolean('random_init', False,
-#                      'Should we randomly initialize a new LSTM?')
-
-def main(argv):
+def main():
     v = True
-    # v = FLAGS.verbose
-    # raw_path = FLAGS.path
-    # trainable = FLAGS.trainable
-    # random_init = FLAGS.random_init
+    wb = False
 
     config = {
         'dropout': 0.1,
@@ -60,19 +43,21 @@ def main(argv):
         'train_split': 0.6,
         'preprocess': "medium",
         'batch_size': 20,
-        'epochs': 100,
+        'epochs': 500,
         'trainable': False,
         'pretrained': False,
         'dense_units': 256,
+        'layers_transferred': 4,  # 1-5
+        'bci_task': "data/snirf/bci_task_1.snirf"
     }
 
     wandb.init(
         project="fnirs_transfer", entity="esbenkran",
-        tags=["middle", "fourth", "16"], config=config)
+        tags=["middle", "stacked", "fifth", "16"], config=config)
 
     config = wandb.config
 
-    raw_path = "data/21-10-13_bci_task_1.snirf"
+    raw_path = config.get("bci_task")
 
     past = 39
     split_fraction = config.get("train_split")
@@ -101,11 +86,14 @@ def main(argv):
 
     ic("Extract epochs from raw data...")
 
+    task_1 = re.findall(r'(?<=\d_).*(?=_)', raw_path)[0]
+    task_2 = re.findall(r'(?<=_)[a-z]{3,10}(?=.snirf)', raw_path)[0]
+
     filter_haemo.annotations.rename(
         {
             '0': 'Nothing',
-            '1': 'Waving arms',
-            '2': 'Talking'
+            '1': task_1,
+            '2': task_2
         })
 
     events, event_dict = mne.events_from_annotations(
@@ -116,32 +104,32 @@ def main(argv):
                         preload=True,
                         verbose=False)
 
-    df = epochs[['Waving arms', 'Talking']].to_data_frame()
+    df = epochs[[task_2, task_1]].to_data_frame()
 
     # Creating the training and test set
-    talking_epochs = df.groupby("condition")["epoch"].unique().Talking
-    arms_epochs = df.groupby("condition")["epoch"].unique()["Waving arms"]
+    task_1_epochs = df.groupby("condition")["epoch"].unique()[task_1]
+    task_2_epochs = df.groupby("condition")["epoch"].unique()[task_2]
 
-    talking_train_split = int(len(talking_epochs) * split_fraction)
-    amrs_train_split = int(split_fraction * len(arms_epochs))
+    task_1_train_split = int(len(task_1_epochs) * split_fraction)
+    task_2_train_split = int(split_fraction * len(task_2_epochs))
 
-    talking_train_epochs = talking_epochs[:talking_train_split]
-    arms_train_epochs = arms_epochs[:amrs_train_split]
+    task_1_train_epochs = task_1_epochs[:task_1_train_split]
+    task_2_train_epochs = task_2_epochs[:task_2_train_split]
 
-    talking_test_epochs = talking_epochs[talking_train_split:]
-    arms_test_epochs = arms_epochs[amrs_train_split:]
+    task_1_test_epochs = task_1_epochs[task_1_train_split:]
+    task_2_test_epochs = task_2_epochs[task_2_train_split:]
 
-    talking_train_data = df.loc[df["epoch"].isin(talking_train_epochs)]
-    arms_train_data = df.loc[df["epoch"].isin(arms_train_epochs)]
+    task_1_train_data = df.loc[df["epoch"].isin(task_1_train_epochs)]
+    task_2_train_data = df.loc[df["epoch"].isin(task_2_train_epochs)]
 
-    talking_test_data = df.loc[df["epoch"].isin(talking_test_epochs)]
-    arms_test_data = df.loc[df["epoch"].isin(arms_test_epochs)]
+    task_1_test_data = df.loc[df["epoch"].isin(task_1_test_epochs)]
+    task_2_test_data = df.loc[df["epoch"].isin(task_2_test_epochs)]
 
-    train_df = pd.concat([talking_train_data, arms_train_data])
+    train_df = pd.concat([task_1_train_data, task_2_train_data])
 
     x_train = train_df.drop(["condition", "epoch", "time"], axis=1).values
     y_train = train_df.groupby("epoch").first()["condition"]
-    y_train = [1 if y == "Talking" else 0 for y in y_train]
+    y_train = [1 if y == task_1 else 0 for y in y_train]
 
     x_train = normalize(x_train)
 
@@ -156,11 +144,11 @@ def main(argv):
         sequence_length=past,
         sequence_stride=past)
 
-    test_df = pd.concat([talking_test_data, arms_test_data])
+    test_df = pd.concat([task_1_test_data, task_2_test_data])
 
     x_test = test_df.drop(["condition", "epoch", "time"], axis=1).values
     y_test = test_df.groupby("epoch").first()["condition"]
-    y_test = [1 if y == "Talking" else 0 for y in y_test]
+    y_test = [1 if y == task_1 else 0 for y in y_test]
 
     x_test = normalize(x_test)
 
@@ -181,8 +169,7 @@ def main(argv):
     print("Input shape:", inputs.numpy().shape)
     print("Target shape:", targets.numpy().shape)
 
-    # model_path = "wandb\\run-20211214_112845-tmz11bej\\files\\model-best.h5"
-    model_path = "wandb\\run-20211215_145437-3qngff05\\files\\model-best.h5"
+    model_path = "models/model-3-stack-16.h5"
     path_checkpoint = "model_checkpoint.h5"
 
     source_model = keras.models.load_model(model_path)
@@ -193,22 +180,38 @@ def main(argv):
     ic(units, dropout)
 
     model = keras.Sequential()
-    for layer in source_model.layers[:-1 if config.get("pretrained") else -2]:
-        # Go through until last layer to remove the Dense 1-neuron output layer
-        model.add(layer)
+    for layer in range(5):
+        if layer < config.get("layers_transferred"):
+            model.add(source_model.layers[layer])
+        elif layer == 3:
+            model.add(keras.layers.Bidirectional(
+                keras.layers.LSTM(units=units,
+                                  activation='tanh',
+                                  dropout=dropout,
+                                  ), name="bi" + str(layer)))
+        elif layer == 4:
+            model.add(keras.layers.Dense(
+                128, activation="relu", name="de" + str(layer)))
+        else:
+            model.add(keras.layers.Bidirectional(
+                keras.layers.LSTM(units=units,
+                                  activation='tanh',
+                                  dropout=dropout,
+                                  return_sequences=True
+                                  ), name="bi" + str(layer)))
+        # Adds the layers until the final softmax et al. layers
 
-    if not config.get("pretrained"):
-        model.add(keras.layers.Bidirectional(
-            keras.layers.LSTM(units=units,
-                              activation='tanh',
-                              dropout=dropout
-                              )))
+    if not config.get("trainable"):
+        for layer in range(config.get("layers_transferred")-1):
+            model.layers[layer].trainable = False
 
     model.add(keras.layers.Dropout(config.get("dropout_2")))
-    model.add(keras.layers.Dense(dense_units, activation="relu"))
-    model.add(keras.layers.Dense(1, activation="sigmoid"))
+    model.add(keras.layers.Dense(
+        dense_units, activation="relu", name="de_end"))
+    model.add(keras.layers.Dense(1, activation="sigmoid", name="de_output"))
 
     model.summary()
+
     ic(config.get("trainable"))
     ic(config.get("pretrained"))
 
@@ -216,10 +219,6 @@ def main(argv):
     model.compile(loss='binary_crossentropy',
                   optimizer=opt,
                   metrics=['binary_crossentropy'])
-
-    model.get_layer("bidirectional").trainable = config.get("trainable")
-    ic("Model loaded and LSTM.trainable set to...",
-       model.get_layer("bidirectional").trainable)
 
     es_callback = keras.callbacks.EarlyStopping(
         monitor="binary_crossentropy", min_delta=0, patience=50, verbose=1, mode="min")
@@ -231,13 +230,6 @@ def main(argv):
         save_weights_only=True,
         save_best_only=True,)
 
-    # for x, y in dataset_train.take(1):
-    #     print(x)
-    #     print(y)
-    # for x, y in dataset_val.take(1):
-    #     print(x)
-    #     print(y)
-
     history = model.fit(
         dataset_train,
         epochs=config.get("epochs"),
@@ -246,10 +238,6 @@ def main(argv):
                    WandbCallback(data_type="time series")],
     )
 
-    # visualize_loss(history, "Training and Validation Loss")
 
-
-# if __name__ == '__main__':
-#     app.run(main)
-
-main("me")
+if __name__ == '__main__':
+    main()

@@ -8,6 +8,7 @@ from mne_nirs.channels import (get_long_channels,
                                get_short_channels,
                                picks_pair_to_idx)
 from mne.preprocessing.nirs import optical_density, beer_lambert_law
+from icecream import ic
 
 
 def preprocess(path, l_pass=0.7, h_pass=0.01, bandpass=True, short_ch_reg=False, tddr=True, negative_correlation=False, verbose=False, return_all=False):
@@ -92,3 +93,86 @@ def load_and_process(path):
                      h_pass=0.01,
                      bandpass=True)
     return raw.to_data_frame()
+
+
+def show_heatmap(data):
+    """
+    Show a heatmap of all column correlations
+    """
+    plt.matshow(data.corr())
+    plt.xticks(range(data.shape[1]),
+               data.columns, fontsize=14, rotation=90)
+    plt.gca().xaxis.tick_bottom()
+    plt.yticks(range(data.shape[1]), data.columns, fontsize=14)
+
+    cb = plt.colorbar()
+    cb.ax.tick_params(labelsize=14)
+    plt.title("Feature Correlation Heatmap", fontsize=14)
+    plt.show()
+
+
+def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
+    """
+    Call in a loop to create terminal progress bar
+    :param int iteration: current iteration
+    :param int total: total iterations
+    :param str prefix: prefix string
+    :param str suffix: suffix string
+    :param int decimals: positive number of decimals in percent complete
+    :param int length: character length of bar
+    :param str fill: bar fill character
+    :param str printEnd: end character
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 *
+                                                     (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
+
+
+def visualize_loss(history, title):
+    """
+    Visualize the loss
+    """
+    loss = history.history["loss"]
+    val_loss = history.history["val_loss"]
+    epochs = range(len(loss))
+    plt.figure()
+    plt.plot(epochs, loss, "b", label="Training loss")
+    plt.plot(epochs, val_loss, "r", label="Validation loss")
+    plt.title(title)
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.show()
+
+
+def show_plot(plot_data, delta, title):
+    """
+    Show plot to evaluate the model
+    """
+    labels = ["History", "True Future", "Model Prediction"]
+    marker = [".-", "rx", "go"]
+    time_steps = list(range(-(plot_data[0].shape[0]), 0))
+    # ic(time_steps)
+    if delta:
+        future = delta
+    else:
+        future = 0
+
+    plt.title(title)
+    for i, val in enumerate(plot_data):
+        if i:
+            plt.plot(future, plot_data[i], marker[i],
+                     markersize=10, label=labels[i])
+        else:
+            plt.plot(time_steps, plot_data[i].flatten(
+            ), marker[i], label=labels[i])
+    plt.legend()
+    plt.xlim([time_steps[0], (future * 2)])
+    plt.xlabel("Time-Step")
+    plt.show()
+    return

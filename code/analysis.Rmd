@@ -1,0 +1,61 @@
+---
+title: "Analysis"
+output: html_notebook
+---
+
+```{r}
+pacman::p_load(tidyverse, R.matlab, showtext, viridis, purrr, ggrepel, png, grid, ggthemes, forcats)
+```
+
+```{r}
+sweep_4 = read_csv("../data/analysis/4_sweep.csv")
+sweep_16 = read_csv("../data/analysis/16_sweep.csv")
+stacked_16 = read_csv("../data/analysis/stack_lstm.csv")
+transfer_16 = read_csv("../data/analysis/16_transfer_sweep.csv") %>% 
+  mutate(pretrainable = paste0(pretrained, trainable))
+stack_transfer_freeze = read_csv("../data/analysis/stack_transfer_layer_freeze.csv") %>% 
+  mutate(layers_transferred = factor(layers_transferred))
+
+
+
+stack_transfer_freeze %>% 
+  ggplot() +
+  aes(x = `_step`, y = val_binary_crossentropy, color = layers_transferred, fill = layers_transferred) +
+  geom_smooth() +
+  facet_wrap(~trainable, ncol=1) +
+  theme_minimal() +
+  coord_cartesian(expand=F)
+
+stacked_16 %>% 
+  ggplot() +
+  aes(`_step`, val_mean_absolute_error) +
+  geom_line() +
+  theme_minimal() +
+  coord_cartesian(expand=F, ylim=c(0,1))
+
+stack_transfer_freeze %>% 
+  group_by(run_id) %>% 
+  summarise(
+    n(),
+    trainable = last(trainable),
+    layers_transferred = last(layers_transferred)
+  ) %>% 
+  arrange(layers_transferred)
+
+stack_transfer_freeze %>%
+  group_by(layers_transferred, trainable, run_id) %>%
+  summarise(
+    best_val_loss=mean(best_val_loss),
+    val_loss = last(val_loss)
+  ) %>% 
+  rbind(tibble(layers_transferred=factor(c(1)), trainable=TRUE, best_val_loss=0.6440920234)) %>% 
+  mutate(layers_transferred = as.numeric(layers_transferred)) %>% 
+  ggplot() +
+  aes(color=trainable, x=layers_transferred, y = best_val_loss) +
+  geom_point() +
+  # geom_line(aes(y=val_loss), alpha=0.35) +
+  theme_bw() +
+  coord_cartesian(expand=F, ylim=c(0, 1))
+
+```
+
