@@ -251,11 +251,12 @@ config = {
 
 raw_path = config.get("raw_path")
 
-paths = ["data/2021-09-22_004.snirf",
-         "data/21-10-13_experiment_test.snirf",
-         "data/21-10-13_pretrain_5.snirf",
-         "data/21-09-15_pretrain_1.snirf",
-         "data/21-09-22_pretrain_3.snirf"]
+paths = ["data/pretrain_1.snirf",
+         "data/pretrain_2.snirf",
+         "data/pretrain_3.snirf",
+         "data/pretrain_4.snirf",
+         "data/pretrain_5.snirf",
+         "data/pretrain_6.snirf", ]
 
 if config.get("preprocess") == "none":
     filter_haemo = [preprocess(p,
@@ -473,7 +474,7 @@ path_checkpoint = "model_weights.h5"
 
 if wb:
     wandb.init(project="fnirs_ml", entity="esbenkran",
-               name=f"ubdt{int(random.random() * 1000)}", config=config, tags=["ALL"])
+               name=f"3-layer_{int(random.random() * 1000)}", config=config, tags=["ALL"])
     config = wandb.config
 
 if train:

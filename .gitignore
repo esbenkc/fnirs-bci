@@ -1,2 +1,3 @@
 hidden_data/*
 wandb/*
+*pycache*
