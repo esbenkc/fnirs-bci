@@ -1,3 +1,4 @@
+from helper_functions import *
 from helper_functions import preprocess, visualize_loss, show_plot
 import warnings
 from icecream import ic
@@ -13,24 +14,13 @@ with warnings.catch_warnings():
     import getopt
     from tensorflow import keras
     from tensorflow.keras import metrics
+    import tensorflow as tf
     import time
 
     import wandb
     from wandb.keras import WandbCallback
 
     import re
-
-
-def normalize(df, df_ref=None):
-    """
-    Normalize all numerical values in dataframe
-    :param df: dataframe
-    :param df_ref: reference dataframe
-    """
-    if df_ref is None:
-        df_ref = df
-    df_norm = (df - df_ref.mean()) / df_ref.std()
-    return df_norm
 
 
 def main():
@@ -41,14 +31,15 @@ def main():
         'dropout': 0.1,
         'dropout_2': 0.5,
         'train_split': 0.6,
+        "learning_rate": 0.00005,
         'preprocess': "medium",
-        'batch_size': 20,
+        'batch_size': 4,
         'epochs': 500,
         'trainable': False,
         'pretrained': False,
         'dense_units': 256,
-        'layers_transferred': 4,  # 1-5
-        'bci_task': "data/snirf/bci_task_1.snirf"
+        'layers_transferred': 5,  # 1-5
+        'bci_task': "data/snirf/bci_task_3_arithmetic_rotation.snirf"
     }
 
     wandb.init(
@@ -130,6 +121,7 @@ def main():
     x_train = train_df.drop(["condition", "epoch", "time"], axis=1).values
     y_train = train_df.groupby("epoch").first()["condition"]
     y_train = [1 if y == task_1 else 0 for y in y_train]
+    y_train = np.array([[i for x in range(past)] for i in y_train]).flatten()
 
     x_train = normalize(x_train)
 
@@ -149,6 +141,7 @@ def main():
     x_test = test_df.drop(["condition", "epoch", "time"], axis=1).values
     y_test = test_df.groupby("epoch").first()["condition"]
     y_test = [1 if y == task_1 else 0 for y in y_test]
+    y_test = np.array([[i for x in range(past)] for i in y_test]).flatten()
 
     x_test = normalize(x_test)
 
@@ -202,8 +195,10 @@ def main():
         # Adds the layers until the final softmax et al. layers
 
     if not config.get("trainable"):
-        for layer in range(config.get("layers_transferred")):
-            model.layers[layer].trainable = False
+        print(model.layers)
+        for layer in range(config.get("layers_transferred")-1):
+            if layer != 0:
+                model.layers[layer-1].trainable = False
 
     model.add(keras.layers.Dropout(config.get("dropout_2")))
     model.add(keras.layers.Dense(
@@ -212,16 +207,17 @@ def main():
 
     model.summary()
 
-    ic(config.get("trainable"))
-    ic(config.get("pretrained"))
-
-    opt = keras.optimizers.Adam()
+    opt = keras.optimizers.Nadam(learning_rate=config.get("learning_rate"))
     model.compile(loss='binary_crossentropy',
                   optimizer=opt,
-                  metrics=['binary_crossentropy'])
+                  metrics=[
+                      'binary_crossentropy',
+                      custom_binary_accuracy,
+                      f1
+                  ])
 
     es_callback = keras.callbacks.EarlyStopping(
-        monitor="binary_crossentropy", min_delta=0, patience=50, verbose=1, mode="min")
+        monitor="val_binary_crossentropy", min_delta=0, patience=50, verbose=1, mode="min")
 
     modelckpt_callback = keras.callbacks.ModelCheckpoint(
         monitor="binary_crossentropy",

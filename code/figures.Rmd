@@ -110,7 +110,7 @@ ggsave(paste0(output_dir, "montage.png"), p, units="cm", width=9, height=7.5)
 
 ## Prediction example
 ```{r include=F}
-df <- read_csv("../data/prediction_example.csv", progress=F)
+df <- read_csv("../data/visualization/prediction_example.csv", progress=F)
 
 p <- df %>% 
   pivot_longer(cols = matches("Prediction")) %>% 
@@ -123,8 +123,9 @@ p <- df %>%
       facet == 0 ~ "16-sample trained LSTM",
       facet == 1 ~ " 16-sample trained triple-stacked LSTM ",
       facet == 2 ~ " 4-sample trained LSTM ",
-      facet == 3 ~ "4-sample trained LSTM",
-      facet == 4 ~ "16-sample trained triple-stacked LSTM",
+      facet == 3 ~ "Last-value baseline",
+      facet == 4 ~ "Gaussian random",
+      facet == 5 ~ "Delayed 39-sample moving average",
       T ~ facet
     )
   ) %>% 
@@ -135,26 +136,47 @@ p <- df %>%
   geom_hline(yintercept = 0, alpha=0.2) +
   facet_wrap(~facet, ncol=2) +
   geom_vline(aes(xintercept=past + future), linetype="dashed") +
-  geom_text(aes(x = past + future + 4, label = paste0("Prediction\nstart: ", future)), color="black", hjust=0, y = 1, lineheight=0.9, size=3) +
+  geom_text(aes(x = past + future + 4, label = paste0("Prediction\nstart: ", future)), color="black", hjust=0, y = 1.8, lineheight=0.9, size=3) +
   geom_vline(aes(xintercept=past)) +
-  annotate("text", label="Past", x=35, hjust=1, y = 1, lineheight=0.9, size=3) +
-  coord_cartesian(expand=F, ylim=c(-1.7,1.7), xlim=c(1,199)) +
+  annotate("text", label="Past", x=35, hjust=1, y = 1.8, lineheight=0.9, size=3) +
+  coord_cartesian(expand=F, ylim=c(-2.5, 2.9), xlim=c(0,200)) +
   scale_color_viridis_d(end = 0.7, limits=c("True value", "Self prediction", "Real prediction")) +
   theme_bw() +
-  guides(color=guide_legend(ncol=2)) +
+  # guides(color=guide_legend(ncol=2)) +
   theme(
     panel.grid = element_blank(),
-    legend.position = c(0.74, 0.375),
+    legend.position = "top",
     text = element_text(family="Lato", lineheight = 0.5),
     panel.margin = unit(0, "cm")
   ) +
   labs(color=NULL, x="Sample", y="HbO")
 
-ggsave(paste0(output_dir, "prediction_example.png"), p, units="px", width=2056, height=1200)
+ggsave(paste0(output_dir, "prediction_example.png"), p, units="px", width=2056, height=1500)
 
 ```
 
+## Vis of fNIRS data
+```{r}
+df <- read_csv("../data/visualization/prediction_example.csv", progress=F)
 
+p <- df %>% 
+  ggplot() +
+  aes(x = Index, y = Real) +
+  geom_line(color="#707070", size=0.1) +
+  coord_cartesian(expand=F) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    panel.spacing = unit(0, "cm"),
+  )
+
+ggsave(paste0(output_dir, "sample_data.png"), p, units="px", width=1123, height=150)
+  
+```
 
 
 

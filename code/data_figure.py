@@ -60,7 +60,7 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
             model = load_model(model_path)
             predictions = [model.predict(i[None, ...]) for i in inputs]
         elif model_path == "mean":
-            predictions = [np.mean(inputs.values) for i in inputs]
+            predictions = np.array([[np.array(i).mean() for i in inputs]])
         elif model_path == "last_value":
             predictions = [inputs[:, -1, 0]]
         elif model_path == "gaussian_random":
@@ -69,38 +69,8 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
         print(
             f"{bcolors.HEADER}Start index: {start}\nStart padding shape: {np.array([nirs[i, 0] for i in range(start)]).shape}\nEvaulation shape: {np.array(np.concatenate(predictions)).flatten().shape}{bcolors.ENDC}")
 
-        df["Prediction_" + str(idx) + "_" + str(futures[idx])
-           ] = np.concatenate(([nirs[i, 0] for i in range(start)], np.array(np.concatenate(predictions)).flatten()))
-
-        # Use the predictions as input
-        X = nirs
-        X[:, 0] = np.array(
-            df["Prediction_" + str(idx) + "_" + str(futures[idx])])
-        X = X[:-futures[idx], :]
-
-        dataset = timeseries_dataset_from_array(
-            X,
-            Y,
-            sequence_length=sequence_length,
-            sampling_rate=1,
-            batch_size=batch_size,
-            sequence_stride=1,
-        )
-
-        for batch in dataset.take(1):
-            inputs, targets = batch
-
-        if "model" in model_path:
-            predictions = [model.predict(i[None, ...]) for i in inputs]
-        elif model_path == "mean":
-            predictions = [np.mean(inputs, axis=1)]
-        elif model_path == "last_value":
-            predictions = [inputs[:, -1, 0]]
-        elif model_path == "gaussian_random":
-            predictions = [np.random.normal(0, 1, len(inputs))]
-
-        df["Prediction_self_" + str(idx) + "_" + str(futures[idx])
-           ] = np.concatenate(([nirs[i, 0] for i in range(start)], np.array(np.concatenate(predictions)).flatten()))
+        df[f"Prediction_{idx}_{futures[idx]}"] = np.concatenate(
+            ([nirs[i, 0] for i in range(start)], np.array(np.concatenate(predictions)).flatten()))
 
         print(f"{bcolors.OK}Finished with this loop.{bcolors.ENDC}")
 
@@ -108,8 +78,6 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
     df.plot(x="Index", y=np.concatenate(
         (
             ["Real"],
-            ["Prediction_self_" +
-             str(i) + "_" + str(futures[i]) for i in range(len(futures))],
             ["Prediction_" + str(i) + "_" + str(futures[i]) for i in range(len(futures))]))).get_figure().savefig("media/prediction.png")
     df.to_csv("data/prediction_example.csv")
 
@@ -119,12 +87,13 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
 if __name__ == "__main__":
     generate_predict_data(
         "data/snirf/pretrain_3.snirf",
-        1200, 1400,
+        800, 1000,
         model_paths=[
             "models/model-16.h5",
             "models/model-3-stack-16.h5",
             "models/model-4.h5",
+            "last_value",
             "gaussian_random",
             "mean",
-            "last_value", ],
+        ],
         futures=[16, 16, 4, 16, 16, 16])

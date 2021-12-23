@@ -69,32 +69,32 @@ v = p = p_loss = False
 
 config = {
     "learning_rate": 0.00002,
-    "epochs": 100,
-    "batch_size": 20,
-    "loss_function": "mse",
-    "optimizer": "adam",
+    "epochs": 200,
+    "batch_size": 16,
+    "loss_function": "mae",
+    "optimizer": "nadam",
     "dropout": 0.5,
     "units": 100,
     "past": 39,
     "future": 16,
-    "preprocess": "simple",
+    "preprocess": "medium",
     "bidirectional": True,
     "activation_function": "tanh",
     "normalize": True,
     "l_pass": 0.7,
     "h_pass": 0.01,
     "train_split": 0.7,
-    "raw_path": "data/2021-09-22_004.snirf"
+    "raw_path": "data/snirf/pretrain_3.snirf"
 }
 
 raw_path = config.get("raw_path")
 
-paths = ["data/pretrain_1.snirf",
-         "data/pretrain_2.snirf",
-         "data/pretrain_3.snirf",
-         "data/pretrain_4.snirf",
-         "data/pretrain_5.snirf",
-         "data/pretrain_6.snirf", ]
+paths = ["data/snirf/pretrain_1.snirf",
+         "data/snirf/pretrain_2.snirf",
+         "data/snirf/pretrain_3.snirf",
+         "data/snirf/pretrain_4.snirf",
+         "data/snirf/pretrain_5.snirf",
+         "data/snirf/pretrain_6.snirf", ]
 
 if config.get("preprocess") == "none":
     filter_haemo = [preprocess(p,
@@ -221,6 +221,8 @@ sequence_length = int(past / step)
 
 print(y_train.shape)
 print(x_train.shape)
+print(x_train)
+print(y_train)
 
 if v:
     ic("Make a training dataset from arrays with definitions of sequence length")
@@ -307,6 +309,9 @@ for batch in dataset_train.take(1):
 
 print("Input shape:", inputs.numpy().shape)
 print("Target shape:", targets.numpy().shape)
+
+print("First training example:", inputs.numpy()[17, 38, 0])
+print("First training target:", targets.numpy()[0])
 
 path_checkpoint = "model_weights.h5"
 

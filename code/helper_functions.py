@@ -9,6 +9,7 @@ from mne_nirs.channels import (get_long_channels,
                                picks_pair_to_idx)
 from mne.preprocessing.nirs import optical_density, beer_lambert_law
 from icecream import ic
+from keras import backend as K
 
 
 def preprocess(path, l_pass=0.7, h_pass=0.01, bandpass=True, short_ch_reg=False, tddr=True, negative_correlation=False, verbose=False, return_all=False):
@@ -176,3 +177,57 @@ def show_plot(plot_data, delta, title):
     plt.xlabel("Time-Step")
     plt.show()
     return
+
+
+def normalize(df, df_ref=None):
+    """
+    Normalize all numerical values in dataframe
+    :param df: dataframe
+    :param df_ref: reference dataframe
+    """
+    if df_ref is None:
+        df_ref = df
+    df_norm = (df - df_ref.mean()) / df_ref.std()
+    return df_norm
+
+
+def f1(y_true, y_pred):
+    """
+    F1 metric
+    """
+    def recall(y_true, y_pred):
+        """Recall metric.
+
+        Only computes a batch-wise average of recall.
+
+        Computes the recall, a metric for multi-label classification of
+        how many relevant items are selected.
+        """
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+        recall = true_positives / (possible_positives + K.epsilon())
+        return recall
+
+    def precision(y_true, y_pred):
+        """Precision metric.
+
+        Only computes a batch-wise average of precision.
+
+        Computes the precision, a metric for multi-label classification of
+        how many selected items are relevant.
+        """
+        true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+        predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+        precision = true_positives / (predicted_positives + K.epsilon())
+        return precision
+
+    precision = precision(y_true, y_pred)
+    recall = recall(y_true, y_pred)
+    return 2*((precision*recall)/(precision+recall+K.epsilon()))
+
+
+def custom_binary_accuracy(y_true, y_pred):
+    """
+    Custom binary accuracy metric
+    """
+    return K.mean(K.equal(K.round(y_true), K.round(y_pred)))

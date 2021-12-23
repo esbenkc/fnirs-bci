@@ -7,7 +7,7 @@ output: html_notebook
 pacman::p_load(tidyverse, R.matlab, showtext, viridis, purrr, ggrepel, png, grid, ggthemes, forcats)
 ```
 
-```{r}
+```{r fig.height=8, fig.width=8, message=FALSE}
 sweep_4 = read_csv("../data/analysis/4_sweep.csv")
 sweep_16 = read_csv("../data/analysis/16_sweep.csv")
 stacked_16 = read_csv("../data/analysis/stack_lstm.csv")
@@ -16,46 +16,63 @@ transfer_16 = read_csv("../data/analysis/16_transfer_sweep.csv") %>%
 stack_transfer_freeze = read_csv("../data/analysis/stack_transfer_layer_freeze.csv") %>% 
   mutate(layers_transferred = factor(layers_transferred))
 
+stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
+  group_by(bci_task, layers_transferred, trainable, repetitions) %>%
+  summarise(
+    best_val_loss = mean(best_val_loss),
+    val_loss_last = last(val_loss),
+    val_loss_1 = nth(val_binary_crossentropy, 1),
+    val_loss_50 = nth(val_binary_crossentropy, 50),
+    val_loss_10 = nth(val_binary_crossentropy, 10),
+    val_loss_25 = nth(val_binary_crossentropy, 25),
+    val_loss_100 = nth(val_binary_crossentropy, 100),
+    bci_task = last(str_extract(bci_task, "(?<=/bci_task_\\d_)[1-3a-z_]+(?=.snirf)"))
+  ) %>% 
+  group_by(bci_task, layers_transferred, trainable) %>% 
+  summarise(
+    sd_best_val_loss = sd(best_val_loss, na.rm=T),
+    sd_val_loss_last = sd(val_loss_last, na.rm=T),
+    sd_val_loss_1 = sd(val_loss_1, na.rm=T),
+    sd_val_loss_10 = sd(val_loss_10, na.rm=T),
+    sd_val_loss_25 = sd(val_loss_25, na.rm=T),
+    sd_val_loss_50 = sd(val_loss_50, na.rm=T),
+    sd_val_loss_100 = sd(val_loss_100, na.rm=T),
+    mean_best_val_loss = mean(best_val_loss, na.rm=T),
+    mean_val_loss_last = mean(val_loss_last, na.rm=T),
+    mean_val_loss_1 = mean(val_loss_1, na.rm=T),
+    mean_val_loss_10 = mean(val_loss_10, na.rm=T),
+    mean_val_loss_25 = mean(val_loss_25, na.rm=T),
+    mean_val_loss_50 = mean(val_loss_50, na.rm=T),
+    mean_val_loss_100 = mean(val_loss_100, na.rm=T),
+  ) %>% 
+  pivot_longer(cols=matches("val_loss"), names_pattern = "^(sd|mean)_(.*)$", names_to = c("limit", "val_loss")) %>% 
+  pivot_wider(names_from=limit, values_from=value, names_repair="check_unique") %>% 
+  mutate(
+    layers_transferred = as.numeric(layers_transferred) - 1,
+    label_position = layers_transferred,
+    val_loss = fct_relevel(val_loss, c("val_loss_10", "val_loss_25", "val_loss_50", "val_loss_100", "val_loss_last", "best_val_loss")),
+    trainable = if_else(trainable, "Yes", "No"),
+    trainable = fct_relevel(trainable, c("Yes", "No")),
+    train_loss = factor(paste0(trainable, val_loss)))
 
-
-stack_transfer_freeze %>% 
+stack_transfer_freeze_pivot %>% 
+  filter(val_loss%in%c("val_loss_10", "val_loss_50")) %>% 
   ggplot() +
-  aes(x = `_step`, y = val_binary_crossentropy, color = layers_transferred, fill = layers_transferred) +
-  geom_smooth() +
-  facet_wrap(~trainable, ncol=1) +
-  theme_minimal() +
-  coord_cartesian(expand=F)
-
-stacked_16 %>% 
-  ggplot() +
-  aes(`_step`, val_mean_absolute_error) +
+  aes(color=val_loss, fill=val_loss, linetype=trainable, label = round(mean, 2), x=layers_transferred, y=mean, ymin=mean - sd, ymax = mean + sd) +
+  geom_ribbon(alpha=0.1) +
   geom_line() +
-  theme_minimal() +
-  coord_cartesian(expand=F, ylim=c(0,1))
-
-stack_transfer_freeze %>% 
-  group_by(run_id) %>% 
-  summarise(
-    n(),
-    trainable = last(trainable),
-    layers_transferred = last(layers_transferred)
-  ) %>% 
-  arrange(layers_transferred)
-
-stack_transfer_freeze %>%
-  group_by(layers_transferred, trainable, run_id) %>%
-  summarise(
-    best_val_loss=mean(best_val_loss),
-    val_loss = last(val_loss)
-  ) %>% 
-  rbind(tibble(layers_transferred=factor(c(1)), trainable=TRUE, best_val_loss=0.6440920234)) %>% 
-  mutate(layers_transferred = as.numeric(layers_transferred)) %>% 
-  ggplot() +
-  aes(color=trainable, x=layers_transferred, y = best_val_loss) +
-  geom_point() +
+  geom_text_repel(nudge_y = 0.1, aes(x = label_position)) +
+  facet_wrap(~bci_task, ncol = 1) +
   # geom_line(aes(y=val_loss), alpha=0.35) +
   theme_bw() +
-  coord_cartesian(expand=F, ylim=c(0, 1))
+  scale_fill_viridis_d(end=0.7) +
+  scale_color_viridis_d(end=0.7) +
+  coord_cartesian(expand=F, ylim=c(0, 1), xlim=c(0, 4)) +
+  theme(
+    panel.spacing = unit(0, "cm"),
+    legend.position = "bottom",
+    text = element_text(family="Lato", lineheight = 0.5)
+  )
 
 ```
 
