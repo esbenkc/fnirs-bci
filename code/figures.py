@@ -60,7 +60,7 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
             model = load_model(model_path)
             predictions = [model.predict(i[None, ...]) for i in inputs]
         elif model_path == "mean":
-            predictions = [np.mean(inputs, axis=1)]
+            predictions = [np.mean(inputs.values) for i in inputs]
         elif model_path == "last_value":
             predictions = [inputs[:, -1, 0]]
         elif model_path == "gaussian_random":
@@ -102,6 +102,8 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
         df["Prediction_self_" + str(idx) + "_" + str(futures[idx])
            ] = np.concatenate(([nirs[i, 0] for i in range(start)], np.array(np.concatenate(predictions)).flatten()))
 
+        print(f"{bcolors.OK}Finished with this loop.{bcolors.ENDC}")
+
     df["Index"] = range(len(df))
     df.plot(x="Index", y=np.concatenate(
         (
@@ -116,7 +118,7 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
 
 if __name__ == "__main__":
     generate_predict_data(
-        "data/pretrain_6.snirf",
+        "data/snirf/pretrain_3.snirf",
         1200, 1400,
         model_paths=[
             "models/model-16.h5",

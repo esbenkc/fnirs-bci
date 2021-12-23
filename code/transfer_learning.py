@@ -202,7 +202,7 @@ def main():
         # Adds the layers until the final softmax et al. layers
 
     if not config.get("trainable"):
-        for layer in range(config.get("layers_transferred")-1):
+        for layer in range(config.get("layers_transferred")):
             model.layers[layer].trainable = False
 
     model.add(keras.layers.Dropout(config.get("dropout_2")))

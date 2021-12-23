@@ -64,6 +64,6 @@ if __name__ == "__main__":
               "data/analysis/16_sweep.csv", {"config.future": 16})
     save_runs("esbenkran/fnirs_transfer", "data/analysis/16_transfer_sweep.csv",
               {"tags": "fourth", })
+    # Other sweeps that run the same config as the below: ["36v7trv1", "v7gbfmpo"]
     save_runs("esbenkran/fnirs_transfer",
-              "data/analysis/stack_transfer_layer_freeze.csv",
-              {"sweep": {"$in": ["36v7trv1", "v7gbfmpo"]}})
+              "data/analysis/stack_transfer_layer_freeze.csv", {"sweep": {"$in": ["b0phwndz"]}})
