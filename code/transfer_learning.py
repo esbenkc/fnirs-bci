@@ -28,7 +28,7 @@ def main():
     wb = False
 
     config = {
-        'dropout': 0.1,
+        'dropout': 0.5,
         'dropout_2': 0.5,
         'train_split': 0.6,
         "learning_rate": 0.00005,
@@ -44,7 +44,7 @@ def main():
 
     wandb.init(
         project="fnirs_transfer", entity="esbenkran",
-        tags=["middle", "stacked", "fifth", "16"], config=config)
+        tags=["real_run", "stacked", "16"], config=config)
 
     config = wandb.config
 
@@ -162,7 +162,7 @@ def main():
     print("Input shape:", inputs.numpy().shape)
     print("Target shape:", targets.numpy().shape)
 
-    model_path = "models/model-3-stack-16.h5"
+    model_path = "models/model-3-stack-16-batch-16.h5"
     path_checkpoint = "model_checkpoint.h5"
 
     source_model = keras.models.load_model(model_path)
