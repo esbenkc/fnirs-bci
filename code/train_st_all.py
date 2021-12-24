@@ -310,9 +310,6 @@ for batch in dataset_train.take(1):
 print("Input shape:", inputs.numpy().shape)
 print("Target shape:", targets.numpy().shape)
 
-print("First training example:", inputs.numpy()[17, 38, 0])
-print("First training target:", targets.numpy()[0])
-
 path_checkpoint = "model_weights.h5"
 
 if wb:
