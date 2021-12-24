@@ -1,3 +1,5 @@
 hidden_data/*
 wandb/*
 *pycache*
+model_checkpoint.h5
+model_weights.h5
