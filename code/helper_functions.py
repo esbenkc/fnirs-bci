@@ -11,6 +11,7 @@ from mne.preprocessing.nirs import optical_density, beer_lambert_law
 from icecream import ic
 from keras import backend as K
 import tensorflow as tf
+import random
 
 
 def preprocess(path, l_pass=0.7, h_pass=0.01, bandpass=True, short_ch_reg=False, tddr=True, negative_correlation=False, verbose=False, return_all=False):
@@ -244,3 +245,65 @@ def custom_binary_accuracy(y_true, y_pred):
     y_true = tf.cast(y_true, dtype=tf.float32)
     y_pred = tf.cast(y_pred, dtype=tf.float32)
     return K.mean(K.equal(K.round(y_true), K.round(y_pred)))
+
+
+def jitter(np_array, mu, sigma):
+    """
+    Add gaussian noise to each column
+    """
+    return np_array + np.random.normal(mu, sigma, np_array.shape)
+
+
+def scale(np_array, min, max):
+    """
+    Make a random uniform variable between min and max and scale the axis 2 array
+    """
+    np_aug = np_array.copy()
+    k = random.uniform(min, max)
+    for i in range(np_aug.shape[1]):
+        np_aug[:, i] = np_aug[:, i] * k
+    return np_aug
+
+
+def sample_gaussian_pdf(x, mu, sigma):
+    """
+    Sample a gaussian pdf
+    """
+    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sigma, 2.))) / np.sqrt(2 * np.pi * np.power(sigma, 2.))
+
+
+def gaussian_random_walk(length, x, y):
+    """
+    Generate a gaussian random walk
+    """
+    walk = np.zeros(length)
+    for i in range(1, length):
+        epsilon = np.random.normal(0, x)
+        walk[i] = walk[i-1] + \
+            sample_gaussian_pdf(walk[i] + epsilon, 0, y) * epsilon
+    return walk
+
+
+def add_random_gaussian_walk(np_array, x, y):
+    """
+    Add a gaussian random walk to the dataframe
+    """
+    np_aug = np_array.copy()
+    for i in range(np_aug.shape[1]):
+        np_aug[:, i] = np_aug[:, i] + \
+            gaussian_random_walk(np_aug.shape[0], x, y)
+    return np_aug
+
+
+def augment_data(np_array, gaussian_walk=True, gaussian_jitter=True, scale_aug=True, jitter_sigma=0.05, x=0.05, y=0.1, min=0.9, max=1.1):
+    """
+    Augment the dataframe
+    """
+    np_aug = np_array.copy()
+    if gaussian_walk:
+        np_aug = add_random_gaussian_walk(np_aug, x, y)
+    if gaussian_jitter:
+        np_aug = jitter(np_aug, 0, jitter_sigma)
+    if scale_aug:
+        np_aug = scale(np_aug, min, max)
+    return np_aug

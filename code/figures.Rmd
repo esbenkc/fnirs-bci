@@ -110,7 +110,7 @@ ggsave(paste0(output_dir, "montage.png"), p, units="cm", width=9, height=7.5)
 
 ## Prediction example
 ```{r include=F}
-df <- read_csv("../data/visualization/prediction_example.csv", progress=F)
+df <- read_csv("../data/visualization/prediction_plot.csv", progress=F)
 
 p <- df %>% 
   pivot_longer(cols = matches("Prediction")) %>% 
@@ -152,6 +152,7 @@ p <- df %>%
   labs(color=NULL, x="Sample", y="HbO")
 
 ggsave(paste0(output_dir, "prediction_example.png"), p, units="px", width=2056, height=1500)
+
 
 ```
 

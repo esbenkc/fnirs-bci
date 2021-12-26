@@ -126,14 +126,18 @@ def main():
     task_2_test_data = df.loc[df["epoch"].isin(task_2_test_epochs)]
 
     train_df = pd.concat([task_1_train_data, task_2_train_data])
+    test_df = pd.concat([task_1_test_data, task_2_test_data])
 
     x_train = train_df.drop(["condition", "epoch", "time"], axis=1).values
     y_train = train_df.groupby("epoch").first()["condition"]
     y_train = [1 if y == task_1 else 0 for y in y_train]
 
-    # y_train = np.array([[i for x in range(past)] for i in y_train]).flatten()
+    x_test = test_df.drop(["condition", "epoch", "time"], axis=1).values
+    y_test = test_df.groupby("epoch").first()["condition"]
+    y_test = [1 if y == task_1 else 0 for y in y_test]
 
     x_train = normalize(x_train)
+    x_test = normalize(x_test)
 
     batch_size = config.get("batch_size")
     dense_units = config.get("dense_units")
@@ -145,17 +149,6 @@ def main():
         batch_size=batch_size,
         sequence_length=past,
         sequence_stride=past)
-
-    test_df = pd.concat([task_1_test_data, task_2_test_data])
-
-    x_test = test_df.drop(["condition", "epoch", "time"], axis=1).values
-    y_test = test_df.groupby("epoch").first()["condition"]
-    y_test = [1 if y == task_1 else 0 for y in y_test]
-    print(f"{bcolors.HEADER}Y test: ", y_test)
-    # y_test = np.array([[i for x in range(past)] for i in y_test]).flatten()
-    # print(f"Making Y into a list with 39 repetitions (length: {len(y_test) / 39} -> {len(y_test)}){bcolors.ENDC}")
-
-    x_test = normalize(x_test)
 
     dataset_val = keras.preprocessing.timeseries_dataset_from_array(
         x_test,

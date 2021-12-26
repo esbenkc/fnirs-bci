@@ -46,26 +46,8 @@ with warnings.catch_warnings():
     from wandb.keras import WandbCallback
     import time
 
-
-# %%
-
-v = True
-p = False
-p_loss = False
-
 wb = train = True
 v = p = p_loss = False
-
-# if __name__ == "__main__":
-#     args = getopt.getopt(sys.argv[1:], "hi:o:", ["ifile=", "ofile="])
-#     wb = True if "wb" in args[1] else False
-#     v = True if "v" in args[1] else False
-#     p = True if "p" in args[1] else False
-#     train = True if "train" in args[1] else False
-#     p_loss = True if "loss" in args[1] else False
-
-# print(f"{bcolors.HEADER}Running with the following arguments:",
-#       args[1], f"{bcolors.ENDC}")
 
 config = {
     "learning_rate": 0.00002,
@@ -88,6 +70,7 @@ config = {
     "architecture": "LSTM-3",  # Dense, LSTM, LSTM-3
     "pretrain_dense_units": 128,
     "test_channel": 0,
+    "patience": 25
 }
 
 raw_path = config.get("raw_path")
@@ -192,7 +175,7 @@ batch_size = config.get("batch_size")
 epochs = config.get("epochs")
 
 # Settings patience
-patience = 15
+patience = config.get("patience")
 
 # What is the time column?
 date_time_key = "time"
@@ -450,13 +433,13 @@ if config.get("architecture") == "Dense":
     predictions = model.predict(inputs).flatten()
 else:
     predictions = [model.predict(i[None, ...]) for i in inputs]
-# print(predictions)
+
 diff = [np.abs(predictions[i][0] - y_val[i])
         for i in range(len(predictions))]
-# print(diff)
+
+ic("Model predictions: ", np.mean(diff))
 
 if train:
-
     # Visualize the loss
     if p_loss:
         visualize_loss(history, "Training and Validation Loss")
@@ -469,71 +452,3 @@ if train:
                 future,
                 "Single Step Prediction",
             )
-
-# Save the model
-model.save("model_weights.h5")
-
-# %%
-"""
-Fine-tune the model
-"""
-
-# source_model = keras.models.load_model(path_checkpoint)
-
-# model = keras.Sequential()
-# for layer in source_model.layers[:-1]:
-#     # Go through until last layer to remove the Dense 1-neuron output layer
-#     model.add(layer)
-
-# model.summary()
-# model.add(keras.layers.Dropout(0.2))
-# model.add(keras.layers.Dense(100, activation="relu"))
-# model.add(keras.layers.Dense(2, activation="softmax"))
-# model.compile(loss='categorical_crossentropy',
-#                 optimizer='adam', metrics=['mean_absolute_error', 'mean_squared_error'])
-
-# model.summary()
-
-# %%
-
-"""
-Pre-training: LSTM på OG pretraining data
-Transfer learning: Lås alting ud over yderste lag, når klassificeringen tegnes
-Fine-tuning: Alting er ulåst, og så bliver den trænet
-
-Pretraining model bliver ført ind i transfer learning-model, der låser træningen og ændrer lag, som så bliver ført ind i fine-tuning-model, hvor alt er ulåst.
-
-- Udregn accuracy af modellen med en eller anden metode. Tutorial har ikke noget om dette.
-- Tag ROIs ud af fNIRS-data for at teste, om mere præcis data kan fungere bedre
-- Basically lige finde ud af, om LSTM fungerer
-    - LSTM bør fungere godt pga. hel masse data-kanaler med nogle korrelative features
-- Potentielt enhance features:
-    - Sigmoid function på input-data, så man får lidt en gate-funktion
-    - Negative correlation enhancement
-- Basic machine learning
-    - Skal have en virkelig god idé om, hvor god modellerne er for at sammenligne dem
-    - Klare variabler såsom accuracy og distance-to-value etc.
-- Først skal vi finde ud af, om den rent faktisk (som GPT) kan forudsige næste værdi
-    - Measure of accuracy
-    - Leg med hyperparametre: Hvor mange sekunder før gæt, hvor langt ud i fremtiden, mængden af parametre etc.
-    - Med forbehold for interpretation af de forskellige parametre
-
-1. Find ud af, hvordan modellen skal valideres
-- Tjek tutorial på https://keras.io/guides/training/
-- Se om andre papers bruger samme metoder og stjæl dem :))
-- Se _præcist_ hvordan modellen valideres
-2. Kan modellen nok til at få så meget data ind
-3. På min data
-    - Kan vi få den til at fungere
-    - Hvornår tør vi at sige, at den fungerer?
-    - Specifikke parametre, som kan ændres
-4. Andre papers med lignende modeller, LSTM, på forecasting for at se, hvilke accuracies er nice
-
-^ Alt the above skal være fungerende, før vi rent faktisk kan transfer learn over til BCI-data
-
-GPT = næste ord
-GPT-transfer = ...
-
-MAR
-
-"""
