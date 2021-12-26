@@ -10,6 +10,7 @@ from mne_nirs.channels import (get_long_channels,
 from mne.preprocessing.nirs import optical_density, beer_lambert_law
 from icecream import ic
 from keras import backend as K
+import tensorflow as tf
 
 
 def preprocess(path, l_pass=0.7, h_pass=0.01, bandpass=True, short_ch_reg=False, tddr=True, negative_correlation=False, verbose=False, return_all=False):
@@ -179,6 +180,16 @@ def show_plot(plot_data, delta, title):
     return
 
 
+def augment_data(df, past):
+
+    df_new = df.copy()
+    for i in range(1, past):
+        df_new = df_new.append(df.shift(i))
+    return df_new
+
+    return df
+
+
 def normalize(df, df_ref=None):
     """
     Normalize all numerical values in dataframe
@@ -230,4 +241,6 @@ def custom_binary_accuracy(y_true, y_pred):
     """
     Custom binary accuracy metric
     """
+    y_true = tf.cast(y_true, dtype=tf.float32)
+    y_pred = tf.cast(y_pred, dtype=tf.float32)
     return K.mean(K.equal(K.round(y_true), K.round(y_pred)))

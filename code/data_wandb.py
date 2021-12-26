@@ -79,16 +79,19 @@ def save_runs(runs, path, filter={}, ):
 
 
 if __name__ == "__main__":
-    # save_run("esbenkran/fnirs_ml/3065xozb", "data/analysis/stack_lstm.csv")
-    # save_run("esbenkran/fnirs_ml/3qngff05", "data/analysis/lstm.csv")
-    # save_run("esbenkran/fnirs_ml/2e2s0nnz", "data/analysis/lstm-4.csv")
-    # save_runs("esbenkran/fnirs_sweep", "data/analysis/4_sweep.csv",
-    #           {"config.future": 4, "sweep": "v6x95luq"})
-    # save_runs("esbenkran/fnirs_sweep",
-    #           "data/analysis/16_sweep.csv", {"config.future": 16})
-    # save_runs("esbenkran/fnirs_transfer", "data/analysis/16_transfer_sweep.csv",
-    #           {"tags": "fourth", })
-    # Other sweeps that run the same config as the below: ["36v7trv1", "v7gbfmpo"]
+    save_run("esbenkran/fnirs_ml/3065xozb", "data/analysis/stack_lstm.csv")
+    save_run("esbenkran/fnirs_ml/3qngff05", "data/analysis/lstm.csv")
+    save_run("esbenkran/fnirs_ml/2e2s0nnz", "data/analysis/lstm-4.csv")
+    save_runs("esbenkran/fnirs_sweep", "data/analysis/4_sweep.csv",
+              {"config.future": 4, "sweep": "v6x95luq"})
+    save_runs("esbenkran/fnirs_sweep",
+              "data/analysis/16_sweep.csv", {"config.future": 16})
+    save_runs("esbenkran/fnirs_transfer", "data/analysis/16_transfer_sweep.csv",
+              {"tags": "fourth", })
+    Other sweeps that run the same config as the below: ["36v7trv1", "v7gbfmpo"]
     save_runs("esbenkran/fnirs_transfer",
               "data/analysis/stack_transfer_layer_freeze.csv",
               {"sweep": {"$in": ["fx3h66q6"]}})
+    save_runs("esbenkran/thought_classification",
+              "data/analysis/thought_classification.csv",
+              {"sweep": {"$in": ["cp3p80yp"]}})

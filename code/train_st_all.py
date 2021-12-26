@@ -70,7 +70,7 @@ v = p = p_loss = False
 config = {
     "learning_rate": 0.00002,
     "epochs": 200,
-    "batch_size": 16,
+    "batch_size": 512,
     "loss_function": "mae",
     "optimizer": "nadam",
     "dropout": 0.5,
@@ -84,7 +84,10 @@ config = {
     "l_pass": 0.7,
     "h_pass": 0.01,
     "train_split": 0.7,
-    "raw_path": "data/snirf/pretrain_3.snirf"
+    "raw_path": "data/snirf/pretrain_3.snirf",
+    "architecture": "LSTM-3",  # Dense, LSTM, LSTM-3
+    "pretrain_dense_units": 128,
+    "test_channel": 0,
 }
 
 raw_path = config.get("raw_path")
@@ -93,8 +96,7 @@ paths = ["data/snirf/pretrain_1.snirf",
          "data/snirf/pretrain_2.snirf",
          "data/snirf/pretrain_3.snirf",
          "data/snirf/pretrain_4.snirf",
-         "data/snirf/pretrain_5.snirf",
-         "data/snirf/pretrain_6.snirf", ]
+         "data/snirf/pretrain_5.snirf", ]
 
 if config.get("preprocess") == "none":
     filter_haemo = [preprocess(p,
@@ -144,19 +146,22 @@ nrows_test = int(nrows_sum * (1 - config.get("train_split")))
 
 idx = np.abs(np.subtract(df_nrows, nrows_test)).argmin()
 
+ic("Calculated test data rows")
 ic(nrows_test)
 ic(idx)
+ic("Rows for the test data:")
 ic(df_nrows[idx])
+ic("All rows:")
 ic(df_nrows)
 
 if v:
     ic("Normalise the data with a basis in the train split so there's no data leakage")
 
-test_features = normalize_and_remove_time(
+val_data = normalize_and_remove_time(
     full_df[idx])
 
-train_features = [normalize_and_remove_time(df) for df in full_df]
-train_features = pd.concat(train_features)
+train_data = [normalize_and_remove_time(df) for df in full_df]
+train_data = pd.concat(train_data)
 
 if p:
     if v:
@@ -164,12 +169,12 @@ if p:
 
     test_features.plot(use_index=True, alpha=0.2, title="Test data").get_figure().savefig(
         "output/test_data.png")
-    train_features.plot(use_index=True, alpha=0.2, title="Train data").get_figure(
+    train_data.plot(use_index=True, alpha=0.2, title="Train data").get_figure(
     ).savefig("output/train_data.png")
 
 # Show heatmap of all column correlations (channel correlations)
 if p:
-    show_heatmap(train_features)
+    show_heatmap(train_data)
 
 # Setting the step size (downsampling basically)
 step = 1
@@ -193,17 +198,6 @@ patience = 15
 date_time_key = "time"
 
 if v:
-    ic("Define the features and set index to the time column of all data")
-
-if v:
-    ic("Select the training data from 0 to the train split")
-train_data = train_features
-
-if v:
-    ic("Select the test data from train_split to end")
-val_data = test_features
-
-if v:
     ic("Select the start and end indices for the training data")
 start = past + future
 end = start + len(train_data)
@@ -212,45 +206,50 @@ if v:
     ic("Select all train data from start to end as one big array of arrays")
 # y = one value per array in x
 
-x_train = train_data.values
-y_train = train_features.iloc[start:end][["S1_D1 hbo"]]
+
+x_train = train_data.iloc[:-future].values
+y_train = train_data.iloc[start:].values[:, config.get("test_channel")]
+# y_train = np.append(y_train, [1000000000 for i in range(past)])
 
 if v:
     ic("Define sequence length from past values divided by the step (in this case 1)")
 sequence_length = int(past / step)
 
-print(y_train.shape)
 print(x_train.shape)
-print(x_train)
-print(y_train)
+print(y_train.shape)
 
 if v:
     ic("Make a training dataset from arrays with definitions of sequence length")
-dataset_train = keras.preprocessing.timeseries_dataset_from_array(
-    x_train,
-    y_train,
-    sequence_length=sequence_length,
-    sampling_rate=step,
-    batch_size=batch_size,
-)
-
-if v:
-    ic("Set the max end index for the validation X data")
-x_end = len(val_data) - past - future
-
-if v:
-    ic("Set the label start")
-label_start = past + future
+if config.get("architecture") == "Dense":
+    dataset_train = keras.preprocessing.timeseries_dataset_from_array(
+        x_train[:, config.get("test_channel")].flatten(),
+        y_train,
+        sequence_length=sequence_length,
+        sampling_rate=step,
+        batch_size=batch_size,
+    )
+elif config.get("architecture") in ["LSTM", "LSTM-3"]:
+    dataset_train = keras.preprocessing.timeseries_dataset_from_array(
+        x_train,
+        y_train,
+        sequence_length=sequence_length,
+        sampling_rate=step,
+        batch_size=batch_size,
+    )
 
 if v:
     ic("Make a validation dataset from like the train dataset")
-x_val = val_data.iloc[:x_end].values
-y_val = val_data.iloc[label_start:][["S1_D1 hbo"]]
+x_val = val_data.iloc[:-future].values
+y_val = val_data.iloc[start:].values[:, config.get("test_channel")]
+# y_val = np.append(y_val, [1000000000 for i in range(past)])
 
 if v:
-    ic("Calculate the chance level with simple same-value prediction")
-y_list = np.array(y_val.iloc[:-40]).ravel()
-x_list = x_val[40:, 0]
+    ic("Calculate the chance levels for the validation data")
+y_list = y_val.ravel()
+x_list = x_val[past:, config.get("test_channel")]
+
+ic(y_list.shape)
+ic(x_list.shape)
 
 chance_df = pd.DataFrame(
     data={
@@ -260,6 +259,7 @@ chance_df = pd.DataFrame(
 
 chance_df["guess"] = [np.mean(y_list) for i in range(len(chance_df))]
 chance_df["gauss"] = [np.random.normal(0) for i in range(len(chance_df))]
+chance_df["zero"] = [0 for i in range(len(chance_df))]
 
 chance_df["diff_mean"] = [
     np.abs(
@@ -279,10 +279,16 @@ chance_df["diff_last"] = [
         chance_df["y"].iloc[i])
     for i in range(len(chance_df))]
 
+chance_df["diff_zero"] = [
+    np.abs(
+        chance_df["zero"].iloc[i] -
+        chance_df["y"].iloc[i])
+    for i in range(len(chance_df))]
 
 chance_gauss = chance_df["diff_gauss"].mean()
 chance_mean = chance_df["diff_mean"].mean()
 chance_last = chance_df["diff_last"].mean()
+chance_zero = chance_df["diff_zero"].mean()
 
 print(f"{bcolors.HEADER}Mean value performance:",
       chance_mean, f"{bcolors.ENDC}")
@@ -290,17 +296,27 @@ print(f"{bcolors.HEADER}Last value chance performance:",
       chance_last, f"{bcolors.ENDC}")
 print(f"{bcolors.HEADER}Gaussian chance performance:",
       chance_gauss, f"{bcolors.ENDC}")
+print(f"{bcolors.HEADER}Zero chance performance:",
+      chance_zero, f"{bcolors.ENDC}")
 
 if v:
     ic("Make a validation dataset with the same definitions as the training dataset")
-dataset_val = keras.preprocessing.timeseries_dataset_from_array(
-    x_val,
-    y_val,
-    sequence_length=sequence_length,
-    sampling_rate=step,
-    batch_size=batch_size,
-)
-
+if config.get("architecture") == "Dense":
+    dataset_val = keras.preprocessing.timeseries_dataset_from_array(
+        x_val[:, config.get("test_channel")].flatten(),
+        y_val,
+        sequence_length=sequence_length,
+        sampling_rate=step,
+        batch_size=batch_size,
+    )
+elif config.get("architecture") in ["LSTM", "LSTM-3"]:
+    dataset_val = keras.preprocessing.timeseries_dataset_from_array(
+        x_val,
+        y_val,
+        sequence_length=sequence_length,
+        sampling_rate=step,
+        batch_size=batch_size,
+    )
 if v:
     print(
         f"Take batches out of the training dataset (currently {batch_size} samples)")
@@ -314,14 +330,17 @@ path_checkpoint = "model_weights.h5"
 
 if wb:
     wandb.init(project="fnirs_ml", entity="esbenkran",
-               name=f"3-layer_{int(random.random() * 1000)}", config=config, tags=["ALL"])
+               name=f"{config.get('architecture')}_{int(random.random() * 1000)}", config=config, tags=["ALL", "model_comp"])
     config = wandb.config
 
 if train:
     if v:
         ic("Define the model architecture")
-    inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
-    if config.get("bidirectional"):
+    if config.get("architecture") == "Dense":
+        inputs = keras.layers.Input(shape=(inputs.shape[0], inputs.shape[1]))
+    elif config.get("architecture") == "3-layer":
+        inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
+
         lstm_1 = keras.layers.Bidirectional(
             keras.layers.LSTM(
                 config.get("units"),
@@ -342,13 +361,15 @@ if train:
                 activation=config.get("activation_function"),
                 dropout=config.get("dropout"),
             ))(lstm_2)
-    else:
+    elif config.get("architecture") in ["LSTM", "LSTM-3"]:
+        inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
         lstm_out = keras.layers.LSTM(
             config.get("units"),
             activation=config.get("activation_function"),
             dropout=config.get("dropout"))(inputs)
 
-    dense_out = keras.layers.Dense(128, activation="relu")(lstm_out)
+    dense_out = keras.layers.Dense(config.get("pretrain_dense_units"), activation="relu")(
+        lstm_out if config.get("architecture") in ["LSTM", "LSTM-3"] else inputs)
     outputs = keras.layers.Dense(1)(dense_out)
 
     # if v:
@@ -422,25 +443,15 @@ if v:
 predictions = []
 diff = []
 
-index = 0
-# for x, y in dataset_val:
-#     index += 1
-#     predictions.append(model.predict(x)[0])
-#     diff.append(model.predict(x)[0] - y[0])
-#     printProgressBar(index, len(dataset_val), length=50,
-#                      prefix=f"{bcolors.HEADER}Progress:", suffix=f"{index}/{len(dataset_val)}{bcolors.ENDC}")
-
-
-# print(
-#     f"{bcolors.HEADER}Mean delta (distance from real): {bcolors.WARN}{np.mean(np.abs(diff))}{bcolors.ENDC}\n{bcolors.HEADER}Chance delta (distance from real): {bcolors.WARN}{chance} {bcolors.ENDC}\n{bcolors.HEADER}Standard deviation: {bcolors.WARN}1.0{bcolors.ENDC}\n{bcolors.HEADER}Mean: {bcolors.WARN}0.0{bcolors.ENDC}")
-
 for batch in dataset_val.take(1):
     inputs, targets = batch
-# ic(inputs.shape)
 
-predictions = [model.predict(i[None, ...]) for i in inputs]
+if config.get("architecture") == "Dense":
+    predictions = model.predict(inputs).flatten()
+else:
+    predictions = [model.predict(i[None, ...]) for i in inputs]
 # print(predictions)
-diff = [np.abs(predictions[i][0] - y_val.iloc[i])
+diff = [np.abs(predictions[i][0] - y_val[i])
         for i in range(len(predictions))]
 # print(diff)
 

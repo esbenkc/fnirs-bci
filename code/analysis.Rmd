@@ -13,7 +13,7 @@ sweep_16 = read_csv("../data/analysis/16_sweep.csv")
 stacked_16 = read_csv("../data/analysis/stack_lstm.csv")
 transfer_16 = read_csv("../data/analysis/16_transfer_sweep.csv") %>% 
   mutate(pretrainable = paste0(pretrained, trainable))
-stack_transfer_freeze = read_csv("../data/analysis/stack_transfer_layer_freeze.csv") %>% 
+stack_transfer_freeze = read_csv("../data/analysis/thought_classification.csv") %>% 
   mutate(layers_transferred = factor(layers_transferred))
 
 stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
@@ -56,7 +56,7 @@ stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
     train_loss = factor(paste0(trainable, val_loss)))
 
 stack_transfer_freeze_pivot %>% 
-  filter(val_loss%in%c("val_loss_10", "val_loss_50")) %>% 
+  filter(val_loss%in%c("best_val_loss")) %>% 
   ggplot() +
   aes(color=val_loss, fill=val_loss, linetype=trainable, label = round(mean, 2), x=layers_transferred, y=mean, ymin=mean - sd, ymax = mean + sd) +
   geom_ribbon(alpha=0.1) +
