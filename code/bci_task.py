@@ -42,7 +42,8 @@ def main():
         'pretrained': False,
         'dense_units': 256,
         'layers_transferred': 5,  # 1-5
-        'bci_task': "data/snirf/bci_task_2_arithmetic_audiobook.snirf"
+        'bci_task': "data/snirf/bci_task_2_arithmetic_audiobook.snirf",
+        'n_augmentations': 10,
     }
 
     wandb.init(
@@ -138,6 +139,16 @@ def main():
 
     x_train = normalize(x_train)
     x_test = normalize(x_test)
+
+    ic("Augmenting data")
+    # Augmenting data
+    x_train_aug = x_train.copy()
+    x_test_aug = x_test.copy()
+    for i in range(config.get("n_augmentations")):
+        x_train = np.append(x_train, augment_data(x_train_aug), axis=1)
+        x_test = np.append(x_test, augment_data(x_test_aug), axis=1)
+    y_train = np.repeat(y_train, config.get("n_augmentations")+1)
+    y_test = np.repeat(y_test, config.get("n_augmentations")+1)
 
     batch_size = config.get("batch_size")
     dense_units = config.get("dense_units")
