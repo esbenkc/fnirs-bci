@@ -33,6 +33,8 @@ def save_run(run, path):
     append["l_pass"] = run.config.get("l_pass")
     append["layers_transferred"] = run.config.get("layers_transferred")
     append["bci_task"] = run.config.get("bci_task")
+    append["architecture"] = run.config.get("architecture")
+    append["pretrain_dense_units"] = run.config.get("pretrain_dense_units")
 
     print(f"{bcolors.HEADER}Saving run history {run.id} to {path}.{bcolors.ENDC}")
     append.to_csv(path)
@@ -73,25 +75,30 @@ def save_runs(runs, path, filter={}, ):
         append["layers_transferred"] = run.config.get("layers_transferred")
         append["bci_task"] = run.config.get("bci_task")
         append["repetitions"] = run.config.get("repetitions")
+        append["architecture"] = run.config.get("architecture")
+        append["pretrain_dense_units"] = run.config.get("pretrain_dense_units")
+        append["test_channel"] = run.config.get("test_channel")
         df = df.append(append)
     df.to_csv(path)
     return df
 
 
 if __name__ == "__main__":
-    save_run("esbenkran/fnirs_ml/3065xozb", "data/analysis/stack_lstm.csv")
-    save_run("esbenkran/fnirs_ml/3qngff05", "data/analysis/lstm.csv")
-    save_run("esbenkran/fnirs_ml/2e2s0nnz", "data/analysis/lstm-4.csv")
-    save_runs("esbenkran/fnirs_sweep", "data/analysis/4_sweep.csv",
-              {"config.future": 4, "sweep": "v6x95luq"})
-    save_runs("esbenkran/fnirs_sweep",
-              "data/analysis/16_sweep.csv", {"config.future": 16})
-    save_runs("esbenkran/fnirs_transfer", "data/analysis/16_transfer_sweep.csv",
-              {"tags": "fourth", })
-    Other sweeps that run the same config as the below: ["36v7trv1", "v7gbfmpo"]
-    save_runs("esbenkran/fnirs_transfer",
-              "data/analysis/stack_transfer_layer_freeze.csv",
-              {"sweep": {"$in": ["fx3h66q6"]}})
-    save_runs("esbenkran/thought_classification",
-              "data/analysis/thought_classification.csv",
-              {"sweep": {"$in": ["cp3p80yp"]}})
+    # save_run("esbenkran/fnirs_ml/3065xozb", "data/analysis/stack_lstm.csv")
+    # save_run("esbenkran/fnirs_ml/3qngff05", "data/analysis/lstm.csv")
+    # save_run("esbenkran/fnirs_ml/2e2s0nnz", "data/analysis/lstm-4.csv")
+    # save_runs("esbenkran/fnirs_sweep", "data/analysis/4_sweep.csv",
+    #           {"config.future": 4, "sweep": "v6x95luq"})
+    # save_runs("esbenkran/fnirs_sweep",
+    #           "data/analysis/16_sweep.csv", {"config.future": 16})
+    # save_runs("esbenkran/fnirs_transfer", "data/analysis/16_transfer_sweep.csv",
+    #           {"tags": "fourth", })
+    # # Other sweeps that run the same config as the below: ["36v7trv1", "v7gbfmpo"]
+    # save_runs("esbenkran/fnirs_transfer",
+    #           "data/analysis/stack_transfer_layer_freeze.csv",
+    #           {"sweep": {"$in": ["fx3h66q6"]}})
+    # save_runs("esbenkran/thought_classification",
+    #           "data/analysis/thought_classification.csv",
+    #           {"sweep": {"$in": ["cp3p80yp"]}})
+    save_runs("esbenkran/thought_classification", "data/analysis/pretraining.csv",
+              {"sweep": {"$in": ["8qp1jtu0", "1iubvmc2"]}})

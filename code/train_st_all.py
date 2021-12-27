@@ -52,7 +52,7 @@ v = p = p_loss = False
 config = {
     "learning_rate": 0.00002,
     "epochs": 200,
-    "batch_size": 512,
+    "batch_size": 24,
     "loss_function": "mae",
     "optimizer": "nadam",
     "dropout": 0.5,
@@ -192,7 +192,6 @@ if v:
 
 x_train = train_data.iloc[:-future].values
 y_train = train_data.iloc[start:].values[:, config.get("test_channel")]
-# y_train = np.append(y_train, [1000000000 for i in range(past)])
 
 if v:
     ic("Define sequence length from past values divided by the step (in this case 1)")
@@ -312,15 +311,15 @@ print("Target shape:", targets.numpy().shape)
 path_checkpoint = "model_weights.h5"
 
 if wb:
-    wandb.init(project="fnirs_ml", entity="esbenkran",
-               name=f"{config.get('architecture')}_{int(random.random() * 1000)}", config=config, tags=["ALL", "model_comp"])
+    wandb.init(project="thought_classification", entity="esbenkran",
+               name=f"{config.get('architecture')}_{int(random.random() * 1000)}", config=config, tags=["ALL", "used_model"])
     config = wandb.config
 
 if train:
     if v:
         ic("Define the model architecture")
     if config.get("architecture") == "Dense":
-        inputs = keras.layers.Input(shape=(inputs.shape[0], inputs.shape[1]))
+        inputs = keras.layers.Input(shape=(inputs.shape[1]))
     elif config.get("architecture") == "3-layer":
         inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
 

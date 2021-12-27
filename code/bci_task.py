@@ -36,19 +36,20 @@ def main():
         'train_split': 0.6,
         "learning_rate": 0.00005,
         'preprocess': "medium",
-        'batch_size': 16,
+        'batch_size': 24,
         'epochs': 500,
         'trainable': False,
-        'pretrained': False,
         'dense_units': 256,
         'layers_transferred': 5,  # 1-5
-        'bci_task': "data/snirf/bci_task_2_arithmetic_audiobook.snirf",
-        'n_augmentations': 10,
+        'bci_task': "data/snirf/bci_task_3_arithmetic_rotation.snirf",
+        'n_augmentations': 10,  # 0, 10, 50
+        'model': "models/dense.h5",
+        'test_channel': 0,
     }
 
     wandb.init(
         project="thought_classification", entity="esbenkran",
-        tags=["test"], config=config)
+        tags=["transfer_learning", "final"], config=config)
 
     config = wandb.config
 
@@ -101,12 +102,6 @@ def main():
 
     df = epochs[[task_2, task_1]].to_data_frame()
 
-    # kfold = KFold(n_splits=10, shuffle=True)
-
-    # samples, 39, 200
-    print(f"{bcolors.ITALIC}Augmenting data from shape {df.shape}")
-    df = augment_data(df, past)
-
     # Creating the training and test set
     task_1_epochs = df.groupby("condition")["epoch"].unique()[task_1]
     task_2_epochs = df.groupby("condition")["epoch"].unique()[task_2]
@@ -140,74 +135,100 @@ def main():
     x_train = normalize(x_train)
     x_test = normalize(x_test)
 
-    ic("Augmenting data")
+    # samples, 39, 200
+    print(f"{bcolors.ITALIC}Augmenting data from shape {x_train.shape}.{bcolors.ENDC}")
+
     # Augmenting data
     x_train_aug = x_train.copy()
     x_test_aug = x_test.copy()
+    y_train_aug = y_train.copy()
+    y_test_aug = y_test.copy()
     for i in range(config.get("n_augmentations")):
-        x_train = np.append(x_train, augment_data(x_train_aug), axis=1)
-        x_test = np.append(x_test, augment_data(x_test_aug), axis=1)
-    y_train = np.repeat(y_train, config.get("n_augmentations")+1)
-    y_test = np.repeat(y_test, config.get("n_augmentations")+1)
+        x_train = np.append(x_train, augment_data(x_train_aug), axis=0)
+        x_test = np.append(x_test, augment_data(x_test_aug), axis=0)
+        y_train = np.append(y_train, y_train_aug)
+        y_test = np.append(y_test, y_test_aug)
+
+    print(f"{bcolors.ITALIC}Input shape after augmentation: {x_train.shape}.\nTarget shape after augmentation: {y_train.shape}.{bcolors.ENDC}")
+
+    print(f"{bcolors.OK}Test input shape after augmentation: {x_test.shape}.\nTest target shape after augmentation: {y_test.shape}.{bcolors.ENDC}")
 
     batch_size = config.get("batch_size")
     dense_units = config.get("dense_units")
 
-    dataset_train = keras.preprocessing.timeseries_dataset_from_array(
-        x_train,
-        y_train,
-        shuffle=True,
-        batch_size=batch_size,
-        sequence_length=past,
-        sequence_stride=past)
+    if "dense" in config.get("model"):
+        dataset_train = keras.preprocessing.timeseries_dataset_from_array(
+            x_train[:, config.get("test_channel")].flatten(),
+            y_train,
+            shuffle=True,
+            batch_size=batch_size,
+            sequence_length=past,
+            sequence_stride=past)
 
-    dataset_val = keras.preprocessing.timeseries_dataset_from_array(
-        x_test,
-        y_test,
-        shuffle=False,
-        batch_size=batch_size,
-        sequence_length=past,
-        sequence_stride=past)
+        dataset_val = keras.preprocessing.timeseries_dataset_from_array(
+            x_test[:, config.get("test_channel")].flatten(),
+            y_test,
+            shuffle=False,
+            batch_size=batch_size,
+            sequence_length=past,
+            sequence_stride=past)
+    elif "lstm" in config.get("model"):
+        dataset_train = keras.preprocessing.timeseries_dataset_from_array(
+            x_train,
+            y_train,
+            shuffle=True,
+            batch_size=batch_size,
+            sequence_length=past,
+            sequence_stride=past)
+
+        dataset_val = keras.preprocessing.timeseries_dataset_from_array(
+            x_test,
+            y_test,
+            shuffle=False,
+            batch_size=batch_size,
+            sequence_length=past,
+            sequence_stride=past)
 
     if v:
         print(
             f"Take batches out of the training dataset (currently {batch_size} samples)")
-    for batch in dataset_train.take(1):
+    for batch in dataset_val.take(1):
         inputs, targets = batch
 
-    print("Y in test set", targets.numpy().flatten())
-
     print("Input shape:", inputs.numpy().shape)
-    print("Target shape:", targets.numpy().shape)
+    print("Target shape:", targets.numpy().shape, f"{bcolors.ENDC}")
 
-    model_path = "models/model-3-stack-16-batch-16.h5"
+    print(f"{bcolors.HEADER}Test set Y {y_test}{bcolors.ENDC}")
+    print(f"{bcolors.HEADER}Y in test set", targets.numpy().flatten())
+    print(f"{bcolors.HEADER}X in test set", inputs.numpy())
+
+    quit()
+
     path_checkpoint = "model_checkpoint.h5"
 
-    source_model = keras.models.load_model(model_path)
+    print(f"{bcolors.ITALIC}Loading model...{config.get('model')}.{bcolors.ENDC}")
+    source_model = keras.models.load_model(config.get("model"))
 
-    units = source_model.layers[1].layer.units
-    dropout = source_model.layers[1].layer.dropout
-
-    ic(units, dropout)
+    units = 100
+    dense_units = 128
+    dropout = 0.5
+    print(f"{bcolors.ITALIC}Source model layers with {units} units (LSTM) or {dense_units} units (Dense) and dropout {dropout}.{bcolors.ENDC}")
 
     model = keras.Sequential()
-    model.add(keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2])))
+    for layer in range(len(source_model.layers)-1):
+        model.add(source_model.layers[layer])
 
-    # model.add(keras.layers.Dense(
-    #     512, activation="relu", name="de_out"))
+    layers = config.get("layers_transferred") if len(source_model.layers) - \
+        1 > config.get("layers_transferred") else len(source_model.layers) - 1
 
-    model.add(keras.layers.Bidirectional(
-        keras.layers.LSTM(units=units,
-                          activation='tanh',
-                          dropout=dropout,
-                          return_sequences=True
-                          ), name="bi"))
+    for layer in range(1, layers):
+        reset_weights(model.layers[layer])
+        if not config.get("trainable"):
+            model.layers[layer].trainable = False
 
     model.add(keras.layers.Dense(
-        dense_units, activation="relu", name="de_end"))
-
+        dense_units, activation="relu", name="de_transfer"))
     model.add(keras.layers.Dense(1, activation="sigmoid", name="de_output"))
-
     model.summary()
 
     opt = keras.optimizers.Nadam(learning_rate=config.get("learning_rate"))

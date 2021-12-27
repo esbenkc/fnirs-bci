@@ -307,3 +307,16 @@ def augment_data(np_array, gaussian_walk=True, gaussian_jitter=True, scale_aug=T
     if scale_aug:
         np_aug = scale(np_aug, min, max)
     return np_aug
+
+
+def reset_weights(layer, method="uniform"):
+    """
+    Reset weights of a layer
+    """
+    if method == "uniform":
+        layer.set_weights(
+            np.random.uniform(-1, 1, layer.get_weights().shape), layer.get_weights())
+    elif method == "normal":
+        layer.set_weights(np.random.normal(
+            0, 1, layer.get_weights().shape), layer.get_weights())
+    return layer
