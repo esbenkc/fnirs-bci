@@ -320,7 +320,7 @@ if train:
         ic("Define the model architecture")
     if config.get("architecture") == "Dense":
         inputs = keras.layers.Input(shape=(inputs.shape[1]))
-    elif config.get("architecture") == "3-layer":
+    elif config.get("architecture") == "LSTM-3":
         inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
 
         lstm_1 = keras.layers.Bidirectional(
@@ -343,7 +343,7 @@ if train:
                 activation=config.get("activation_function"),
                 dropout=config.get("dropout"),
             ))(lstm_2)
-    elif config.get("architecture") in ["LSTM", "LSTM-3"]:
+    elif config.get("architecture") in ["LSTM"]:
         inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
         lstm_out = keras.layers.LSTM(
             config.get("units"),

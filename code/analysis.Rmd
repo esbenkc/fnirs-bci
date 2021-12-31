@@ -97,6 +97,83 @@ df %>%
     range = max-min
   )
 
-
 ```
+## Transfer learning analysis
+```{r}
+df <- read_csv("../data/analysis/transfer_learning.csv")
 
+df %>% 
+  group_by(run_id) %>% 
+  summarise(
+    model = last(model),
+    layers_transferred = last(layers_transferred),
+    bci_task = last(bci_task),
+    n_augmentations = last(n_augmentations),
+    trainable = last(trainable),
+    best_val_loss = last(best_val_loss),
+    val_loss = last(val_loss)
+  ) %>% 
+  group_by(model, layers_transferred, bci_task, n_augmentations, trainable) %>% 
+  summarise(
+    mu = mean(best_val_loss, na.rm=T),
+    sigma = sd(best_val_loss, na.rm=T),
+    n = n(),
+    min = min(best_val_loss, na.rm=T),
+    max = max(best_val_loss, na.rm=T),
+    range = max-min
+  )
+
+df_grouped <- df %>% 
+  group_by(run_id) %>%
+  mutate(
+    model = case_when(
+      model == "models/model-dense.h5" ~ "dense",
+      model == "models/model-lstm-3.h5" ~ "lstm-3",
+      model == "models/model-lstm.h5" ~ "lstm"
+    )
+  ) %>% 
+  summarise(
+    model = last(model),
+    layers_transferred = last(layers_transferred),
+    bci_task = last(bci_task),
+    n_augmentations = last(n_augmentations),
+    trainable = last(trainable),
+    best_val_loss = last(best_val_loss),
+    start_val_loss = first(val_loss),
+    val_loss = last(val_loss),
+    val_acc = round(last(val_custom_binary_accuracy) * 100, 2),
+    best_val_acc = round(max(val_custom_binary_accuracy) * 100, 2),
+    acc = round(max(custom_binary_accuracy) * 100, 2),
+    pretrained = case_when(
+      layers_transferred == 0 ~ FALSE,
+      layers_transferred == 4 ~ TRUE,
+      TRUE ~ NA
+      )
+  ) %>%
+  drop_na(pretrained)
+
+
+df_grouped %>% 
+  group_by(bci_task, model, pretrained) %>% 
+  summarise(
+    max = max(acc, na.rm=T),
+    min = min(acc, na.rm=T),
+    mu = mean(acc, na.rm=T),
+    sigma = sd(acc, na.rm=T),
+    n = n(),
+    range = max-min
+  )
+
+df_grouped %>% 
+  group_by(bci_task, model, pretrained) %>% 
+  summarise(
+    max = max(val_acc, na.rm=T),
+    min = min(val_acc, na.rm=T),
+    mu = mean(val_acc, na.rm=T),
+    sigma = sd(val_acc, na.rm=T),
+    learned = first(val_loss) < first(start_val_loss),
+    n = n(),
+    range = max-min
+  ) %>% 
+  select(learned, everything())
+```

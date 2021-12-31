@@ -78,6 +78,9 @@ def save_runs(runs, path, filter={}, ):
         append["architecture"] = run.config.get("architecture")
         append["pretrain_dense_units"] = run.config.get("pretrain_dense_units")
         append["test_channel"] = run.config.get("test_channel")
+        append["model"] = run.config.get("model")
+        append["n_augmentations"] = run.config.get("n_augmentations")
+        append["dense_units"] = run.config.get("dense_units")
         df = df.append(append)
     df.to_csv(path)
     return df
@@ -100,5 +103,8 @@ if __name__ == "__main__":
     # save_runs("esbenkran/thought_classification",
     #           "data/analysis/thought_classification.csv",
     #           {"sweep": {"$in": ["cp3p80yp"]}})
-    save_runs("esbenkran/thought_classification", "data/analysis/pretraining.csv",
-              {"sweep": {"$in": ["8qp1jtu0", "1iubvmc2"]}})
+    # save_runs("esbenkran/thought_classification", "data/analysis/pretraining.csv",
+    #           {"sweep": {"$in": ["8qp1jtu0", "1iubvmc2"]}})
+
+    save_runs("esbenkran/thought_classification", "data/analysis/transfer_learning.csv",
+              {"sweep": {"$in": ["g3zov98e", "sb135301"]}})

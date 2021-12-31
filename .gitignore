@@ -3,3 +3,4 @@ wandb/*
 *pycache*
 model_checkpoint.h5
 model_weights.h5
+data/datasets/*

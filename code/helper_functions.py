@@ -85,6 +85,102 @@ def normalize_and_remove_time(df, df_ref=None):
     return df_norm
 
 
+def create_dataset(path, n_aug=0, output_path=None, split_fraction=0.6):
+    """
+    Creates a dataset from the raw data.
+
+    :param str path: path to the raw data
+    :return: x_train, y_train, x_test, y_test
+    """
+    filter_haemo = load_and_process_raw(path)
+    ic("Extract epochs from raw data...")
+
+    task_1 = re.findall(r'(?<=\d_).*(?=_)', path)[0]
+    task_2 = re.findall(r'(?<=_)[a-z]{3,10}(?=.snirf)', path)[0]
+
+    filter_haemo.annotations.rename(
+        {
+            '0': 'Nothing',
+            '1': task_1,
+            '2': task_2
+        })
+
+    events, event_dict = mne.events_from_annotations(
+        filter_haemo, verbose=False)
+
+    epochs = mne.Epochs(filter_haemo, events=events, event_id=event_dict,
+                        tmin=0.0, tmax=10.0, baseline=(0, 0.5),
+                        preload=True,
+                        verbose=False)
+
+    df = epochs[[task_2, task_1]].to_data_frame()
+
+    # Creating the training and test set
+    task_1_epochs = df.groupby("condition")["epoch"].unique()[task_1]
+    task_2_epochs = df.groupby("condition")["epoch"].unique()[task_2]
+
+    task_1_train_split = int(len(task_1_epochs) * split_fraction)
+    task_2_train_split = int(split_fraction * len(task_2_epochs))
+
+    task_1_train_epochs = task_1_epochs[:task_1_train_split]
+    task_2_train_epochs = task_2_epochs[:task_2_train_split]
+
+    task_1_test_epochs = task_1_epochs[task_1_train_split:]
+    task_2_test_epochs = task_2_epochs[task_2_train_split:]
+
+    task_1_train_data = df.loc[df["epoch"].isin(task_1_train_epochs)]
+    task_2_train_data = df.loc[df["epoch"].isin(task_2_train_epochs)]
+
+    task_1_test_data = df.loc[df["epoch"].isin(task_1_test_epochs)]
+    task_2_test_data = df.loc[df["epoch"].isin(task_2_test_epochs)]
+
+    train_df = pd.concat([task_1_train_data, task_2_train_data])
+    test_df = pd.concat([task_1_test_data, task_2_test_data])
+
+    x_train = train_df.drop(["condition", "epoch", "time"], axis=1).values
+    y_train = train_df.groupby("epoch").first()["condition"]
+    y_train = [1 if y == task_1 else 0 for y in y_train]
+
+    x_test = test_df.drop(["condition", "epoch", "time"], axis=1).values
+    y_test = test_df.groupby("epoch").first()["condition"]
+    y_test = [1 if y == task_1 else 0 for y in y_test]
+
+    x_train = normalize(x_train)
+    x_test = normalize(x_test)
+
+    # samples, 39, 200
+    print(f"{bcolors.ITALIC}Augmenting data from shape {x_train.shape}.{bcolors.ENDC}")
+
+    # Augmenting data
+    x_train_aug = x_train.copy()
+    x_test_aug = x_test.copy()
+    y_train_aug = y_train.copy()
+    y_test_aug = y_test.copy()
+    for i in range(n_aug):
+        x_train = np.append(x_train, augment_data(x_train_aug), axis=0)
+        x_test = np.append(x_test, augment_data(x_test_aug), axis=0)
+        y_train = np.append(y_train, y_train_aug)
+        y_test = np.append(y_test, y_test_aug)
+
+    x_train = np.array(x_train)
+    x_test = np.array(x_test)
+    y_train = np.array(y_train)
+    y_test = np.array(y_test)
+
+    print(f"{bcolors.ITALIC}Input shape after augmentation: {x_train.shape}.\nTarget shape after augmentation: {y_train.shape}.{bcolors.ENDC}")
+
+    print(f"{bcolors.OK}Test input shape after augmentation: {x_test.shape}.\nTest target shape after augmentation: {y_test.shape}.{bcolors.ENDC}")
+
+    if output_path is not None:
+        print(f"{bcolors.OK}Saving dataset to {output_path}.{bcolors.ENDC}")
+        np.save(output_path + str(n_aug) + "_x_train.npy", x_train)
+        np.save(output_path + str(n_aug) + "_y_train.npy", y_train)
+        np.save(output_path + str(n_aug) + "_x_test.npy", x_test)
+        np.save(output_path + str(n_aug) + "_y_test.npy", y_test)
+
+    return x_train, y_train, x_test, y_test
+
+
 def load_and_process(path):
     """
     Load raw data and preprocess
@@ -94,8 +190,23 @@ def load_and_process(path):
                      tddr=True,
                      l_pass=0.7,
                      h_pass=0.01,
-                     bandpass=True)
+                     bandpass=True,
+                     short_ch_reg=False)
     return raw.to_data_frame()
+
+
+def load_and_process_raw(path):
+    """
+    Load raw data and preprocess
+    """
+    raw = preprocess(path,
+                     verbose=False,
+                     tddr=True,
+                     l_pass=0.7,
+                     h_pass=0.01,
+                     bandpass=True,
+                     short_ch_reg=False)
+    return raw
 
 
 def show_heatmap(data):
@@ -309,14 +420,9 @@ def augment_data(np_array, gaussian_walk=True, gaussian_jitter=True, scale_aug=T
     return np_aug
 
 
-def reset_weights(layer, method="uniform"):
+def reset_weights(ix, model, weights_path="data/weights-lstm-layer.npy"):
     """
     Reset weights of a layer
     """
-    if method == "uniform":
-        layer.set_weights(
-            np.random.uniform(-1, 1, layer.get_weights().shape), layer.get_weights())
-    elif method == "normal":
-        layer.set_weights(np.random.normal(
-            0, 1, layer.get_weights().shape), layer.get_weights())
-    return layer
+    new_weights = np.load(weights_path, allow_pickle=True)
+    ix.set_weights(new_weights)
