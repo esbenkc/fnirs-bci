@@ -5,7 +5,7 @@ date: "4th of January"
 ---
 
 ```{r}
-pacman::p_load(tidyverse, R.matlab, showtext, viridis, purrr, ggrepel, png, grid, ggthemes, forcats)
+pacman::p_load(tidyverse, R.matlab, showtext, viridis, purrr, ggrepel, png, grid, ggthemes, forcats, zoo)
 font_add_google("Inter", "Inter")
 output_dir = "../media/figures/"
 ```
@@ -120,15 +120,15 @@ p <- df %>%
     past = 39,
     facet = str_extract(name, "(?<=.{1,20})\\d") %>% str_remove("_self"),
     facet = case_when(
-      facet == 0 ~ "16-sample trained LSTM",
-      facet == 1 ~ " 16-sample trained triple-stacked LSTM ",
-      facet == 2 ~ " 4-sample trained LSTM ",
-      facet == 3 ~ "Last-value baseline",
-      facet == 4 ~ "Gaussian random",
-      facet == 5 ~ "Delayed 39-sample moving average",
+      facet == 0 ~ "Last-value baseline",
+      facet == 1 ~ "256 neuron fully-connected layer",
+      facet == 2 ~ "100 unit unidirectional LSTM",
+      facet == 3 ~ "200 unit bidirectional LSTM",
+      facet == 4 ~ "Mean baseline",
       T ~ facet
     )
   ) %>% 
+  filter(facet != "Mean baseline") %>% 
   ggplot() +
   aes(Index, value, color=pred_type, group=rev(pred_type)) +
   geom_line(aes(y = Real), color=viridis(1), alpha=0.3) +
@@ -140,7 +140,7 @@ p <- df %>%
   geom_vline(aes(xintercept=past)) +
   annotate("text", label="Past", x=35, hjust=1, y = 1.8, lineheight=0.9, size=3) +
   coord_cartesian(expand=F, ylim=c(-2.5, 2.9), xlim=c(0,200)) +
-  scale_color_viridis_d(end = 0.7, limits=c("True value", "Self prediction", "Real prediction")) +
+  scale_color_viridis_d(end = 0.7, limits=c("True value", "Real prediction")) +
   theme_bw() +
   # guides(color=guide_legend(ncol=2)) +
   theme(
@@ -151,10 +151,93 @@ p <- df %>%
   ) +
   labs(color=NULL, x="Sample", y="HbO")
 
-ggsave(paste0(output_dir, "prediction_example.png"), p, units="px", width=2056, height=1500)
+ggsave(paste0(output_dir, "2_prediction_example.png"), p, units="px", width=2056, height=1200)
 
 
 ```
+
+## Learning of pre-training
+```{r}
+df <- read_csv("../data/analysis/pretraining.csv")
+
+p <- df %>% 
+  filter(batch_size==512) %>% 
+  group_by(run_id) %>% 
+  summarise(
+    val_mean_absolute_error = val_mean_absolute_error,
+    step = `_step`,
+    architecture = architecture
+  ) %>% 
+  group_by(architecture, step) %>% 
+  summarise(
+    max_val = max(val_mean_absolute_error),
+    min_val = min(val_mean_absolute_error),
+    mean_val = mean(val_mean_absolute_error)
+  ) %>% 
+  ggplot() +
+  aes(step, mean_val, ymin = min_val, ymax = max_val, color = architecture, fill = architecture) +
+  geom_ribbon(alpha=0.1) +
+  geom_line() +
+  coord_cartesian(expand=F, ylim = c(0,0.71), xlim=c(0,130))+
+  theme_bw() +
+  # guides(color=guide_legend(ncol=2)) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    text = element_text(family="Lato", lineheight = 0.5),
+    panel.margin = unit(0, "cm")
+  ) +
+  labs(
+    x = "Training step",
+    y = "Validation error",
+    color = NULL,
+    fill = NULL
+  ) +
+  scale_fill_viridis_d(end=0.7) +
+  scale_color_viridis_d(end=0.7)
+
+ggsave(paste0(output_dir, "2_pretrain_learning.png"), p, units="px", width=1020, height=800)
+
+```
+## Pretraining performance geom_col
+```{r}
+df <- read_csv("../data/analysis/pretraining.csv")
+
+p <- tibble(
+    architecture=c("Last-value", "Dense", "LSTM", "LSTM-3"),
+    best_val=c(0.63, 0.569, 0.166, 0.167)
+  ) %>% 
+  mutate(
+    architecture = fct_reorder(architecture, desc(best_val))
+  ) %>% 
+  ggplot() +
+  aes(x=architecture, y=best_val, fill=architecture, color=architecture, label=best_val) +
+  geom_col(alpha=0.3) +
+  coord_cartesian(clip="off", expand=F) +
+  coord_flip() +
+  geom_text(nudge_y = 0.075, size=3) +
+  theme_classic() +
+  # guides(color=guide_legend(ncol=2)) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "none",
+    text = element_text(family="Lato", lineheight = 0.5),
+    axis.line.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = NULL
+  ) +
+  scale_fill_viridis_d(end=0.7) +
+  scale_color_viridis_d(end=0.7)
+
+ggsave(paste0(output_dir, "2_pretrain_performance.png"), p, units="px", width=1020, height=400)
+
+```
+
 
 ## Vis of fNIRS data
 ```{r}
@@ -175,11 +258,209 @@ p <- df %>%
     panel.spacing = unit(0, "cm"),
   )
 
-ggsave(paste0(output_dir, "sample_data.png"), p, units="px", width=1123, height=150)
+ggsave(paste0(output_dir, "1_sample_data.png"), p, units="px", width=1123, height=150)
   
 ```
 
+```{r}
+df <- read_csv("../data/analysis/transfer_learning.csv")
 
+p <- df %>% 
+  group_by(run_id) %>% 
+  summarise(
+    step = `_step`,
+    model = model,
+    layers_transferred = layers_transferred,
+    bci_task = bci_task,
+    n_augmentations = n_augmentations,
+    trainable = trainable,
+    val_loss = val_loss,
+    val_custom_binary_accuracy = val_custom_binary_accuracy,
+    custom_binary_accuracy = custom_binary_accuracy
+  ) %>% 
+  mutate(
+    model = case_when(
+      model == "models/model-dense.h5" ~ "dense",
+      model == "models/model-lstm-3.h5" ~ "lstm-3",
+      model == "models/model-lstm.h5" ~ "lstm"
+    ),
+    pretrained = case_when(
+      layers_transferred == 0 ~ FALSE,
+      layers_transferred == 4 ~ TRUE,
+      TRUE ~ NA
+    ),
+    grouping = paste(pretrained, model)
+  ) %>%
+  pivot_longer(
+    cols=c(custom_binary_accuracy, val_custom_binary_accuracy)
+  ) %>% 
+  mutate(
+    facetting = paste(bci_task, name)
+  ) %>% 
+  drop_na(pretrained, model) %>% 
+  ggplot() +
+  aes(step, value, color = grouping) +
+  facet_wrap(~facetting, ncol=2) +
+  geom_line() +
+  coord_cartesian(ylim=c(0,1),xlim=c(0, 250))
+
+ggsave(paste0(output_dir, "learning_curve.png"), p, units="px", width=2056, height=1500)
+
+```
+
+## 3 Layers transferred
+```{r fig.height=8, fig.width=8, message=FALSE, include=FALSE}
+sweep_4 = read_csv("../data/analysis/4_sweep.csv")
+sweep_16 = read_csv("../data/analysis/16_sweep.csv")
+stacked_16 = read_csv("../data/analysis/stack_lstm.csv")
+transfer_16 = read_csv("../data/analysis/16_transfer_sweep.csv") %>% 
+  mutate(pretrainable = paste0(pretrained, trainable))
+stack_transfer_freeze = read_csv("../data/analysis/transfer_learning.csv") %>% 
+  mutate(layers_transferred = factor(layers_transferred))
+
+stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
+  group_by(run_id) %>%
+  summarise(
+    best_val_loss = mean(best_val_loss),
+    val_loss_last = last(val_loss),
+    val_loss_1 = nth(val_binary_crossentropy, 1),
+    val_loss_50 = nth(val_binary_crossentropy, 50),
+    val_loss_10 = nth(val_binary_crossentropy, 10),
+    val_loss_25 = nth(val_binary_crossentropy, 25),
+    val_loss_100 = nth(val_binary_crossentropy, 100),
+    bci_task = last(str_extract(bci_task, "(?<=/bci_task_\\d_)[1-3a-z_]+(?=.snirf)")),
+    layers_transferred = last(layers_transferred),
+    trainable = last(trainable),
+    model = last(model)
+  ) %>% 
+  filter(model == "models/model-lstm-3.h5") %>% 
+  group_by(bci_task, layers_transferred, trainable) %>% 
+  summarise(
+    sd_best_val_loss = sd(best_val_loss, na.rm=T),
+    sd_val_loss_last = sd(val_loss_last, na.rm=T),
+    sd_val_loss_1 = sd(val_loss_1, na.rm=T),
+    sd_val_loss_10 = sd(val_loss_10, na.rm=T),
+    sd_val_loss_25 = sd(val_loss_25, na.rm=T),
+    sd_val_loss_50 = sd(val_loss_50, na.rm=T),
+    sd_val_loss_100 = sd(val_loss_100, na.rm=T),
+    mean_best_val_loss = mean(best_val_loss, na.rm=T),
+    mean_val_loss_last = mean(val_loss_last, na.rm=T),
+    mean_val_loss_1 = mean(val_loss_1, na.rm=T),
+    mean_val_loss_10 = mean(val_loss_10, na.rm=T),
+    mean_val_loss_25 = mean(val_loss_25, na.rm=T),
+    mean_val_loss_50 = mean(val_loss_50, na.rm=T),
+    mean_val_loss_100 = mean(val_loss_100, na.rm=T),
+    layers_transferred = as.numeric(layers_transferred) - 1,
+    trainable = if_else(trainable, "Fine-tuned", "Frozen"),
+    trainable = fct_relevel(trainable, c("Fine-tuned", "Frozen")),
+    label_position = layers_transferred
+  )
+  # pivot_longer(cols=matches("val_loss"), names_pattern = "^(sd|mean)_(.*)$", names_to = c("limit", "val_loss")) %>% 
+  # pivot_wider(names_from=limit, values_from=value, names_repair="check_unique") %>% 
+  # mutate(
+  #   layers_transferred = as.numeric(layers_transferred) - 1,
+  #   label_position = layers_transferred,
+  #   val_loss = fct_relevel(val_loss, c("val_loss_10", "val_loss_25", "val_loss_50", "val_loss_100", "val_loss_last", "best_val_loss")),
+  #   trainable = if_else(trainable, "Fine-tuned", "Frozen"),
+  #   trainable = fct_relevel(trainable, c("Fine-tuned", "Frozen")),
+  #   train_loss = factor(paste0(trainable, val_loss)))
+
+
+p <- stack_transfer_freeze_pivot %>% 
+  # filter(val_loss%in%c("val_loss_last")) %>%
+  mutate(
+    bci_task = case_when(
+      bci_task == "arithmetic_audiobook" ~ "Arithemetic / Audio",
+      bci_task == "arithmetic_rotation" ~ "Arithmetic / Mental rotation",
+      bci_task == "arms_talk" ~ "Waving arms / Talking",
+    )
+  ) %>% 
+  ggplot() +
+  aes(linetype=trainable, label = round((mean_val_loss_last - mean_val_loss_1), 2), x=layers_transferred, y=(mean_val_loss_last - mean_val_loss_1)) +
+  geom_line(color = viridis(1)) +
+  geom_hline(yintercept=0, linetype="dashed", alpha=0.2) +
+  geom_text_repel(nudge_y = 0.1, aes(x = label_position), show.legend = F, color=viridis(1)) +
+  facet_wrap(~bci_task, ncol = 1) +
+  # geom_line(aes(y=val_loss), alpha=0.35) +
+  theme_bw() +
+  coord_cartesian(expand=F, ylim=c(-0.5, 2), xlim=c(0, 4)) +
+  theme(
+    panel.spacing = unit(0, "cm"),
+    legend.position = "top",
+    text = element_text(family="Lato", lineheight = 0.5)
+  ) +
+  labs(
+    y = "Change in binary cross-entropy",
+    x = "Amount of layers transferred",
+    fill = NULL,
+    linetype = NULL,
+    color = NULL
+  )
+
+ggsave(paste0(output_dir, "3_layers_transferred.png"), p, units="px", width=1020, height=1500)
+```
+## 3 Val and train
+```{r 3 val and train, include=FALSE}
+
+df = read_csv("../data/analysis/transfer_learning.csv")
+
+p <- df %>% 
+  # filter(model == "models/model-lstm-3.h5") %>%
+  mutate(
+    pretrained = case_when(
+      layers_transferred == 4 ~ "Pretrained",
+      layers_transferred == 0 ~ "Re-initialised",
+      TRUE ~ NA_character_
+    ),
+    model = case_when(
+      model == "models/model-dense.h5" ~ "Dense",
+      model == "models/model-lstm.h5" ~ "LSTM",
+      model == "models/model-lstm-3.h5" ~ "LSTM-3"
+    )
+  ) %>% 
+  drop_na(pretrained) %>% 
+  group_by(model, pretrained, `_step`) %>% 
+  summarise(
+    mini_val = min(val_custom_binary_accuracy),
+    maxi_val = max(val_custom_binary_accuracy),
+    meani_val = mean(val_custom_binary_accuracy),
+    mini_train = min(custom_binary_accuracy),
+    maxi_train = max(custom_binary_accuracy),
+    meani_train = mean(custom_binary_accuracy),
+    step = last(`_step`)
+  ) %>% 
+  pivot_longer(cols=matches("_val|_train"), names_pattern = "^(.*)_(train|val)$", names_to = c("metric", "set")) %>% 
+  pivot_wider(names_from=metric, values_from=value, names_repair="check_unique") %>% 
+  mutate(set=if_else(set=="train", "Training set", "Test set")) %>% 
+  ggplot() +
+  aes(x=step, color=model, fill=model, ymin=mini, ymax=maxi, y=meani, linetype=pretrained) +
+  geom_line() +
+  # geom_ribbon(alpha=0.1, show.legend = F) +
+  facet_wrap(~set, ncol=1)+
+  coord_cartesian(expand=F, ylim = c(0.01,0.99), xlim=c(0,130))+
+  theme_bw() +
+  # guides(color=guide_legend(ncol=2)) +
+  theme(
+    panel.grid = element_blank(),
+    legend.position = "top",
+    text = element_text(family="Lato", lineheight = 0.5),
+    panel.margin = unit(0, "cm")
+  ) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = "Training step",
+    y = "Accuracy",
+    color = NULL,
+    fill = NULL,
+    linetype = NULL
+  ) +
+  scale_color_viridis_d(end=0.7) +
+  guides(color=guide_legend(ncol=1),
+         linetype=guide_legend(ncol=1))
+
+ggsave(paste0(output_dir, "3_train_test.png"), p, units="px", width=1020, height=1500)
+  
+```
 
 
 

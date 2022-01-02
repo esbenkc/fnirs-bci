@@ -43,6 +43,7 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
         print(f"X shape: {X.shape}")
 
         if "model" in model_path:
+            # This seems to give an error of the length of input: 129 instead of 145
             X = X[:-futures[idx], :]
             Y = X[start:, [0]]
             batch_size = len(Y)
@@ -75,16 +76,24 @@ def generate_predict_data(path, start_time, end_time, model_paths, past=39, futu
 
         if "model" in model_path:
             model = load_model(model_path)
-            predictions = [model.predict(i[None, ...]) for i in inputs]
+            if "dense" in model_path:
+                print("Dense model predictions")
+                print(inputs.numpy()[0][:, 0].shape)
+                predictions = model.predict(inputs.numpy()[:, :, 0])
+                # predictions = [model.predict(i[:, 0])
+                #                for i in inputs]
+            elif "lstm" in model_path:
+                print("LSTM model predictions")
+                predictions = [model.predict(i[None, ...]) for i in inputs]
         elif model_path == "mean":
-            predictions = np.array([[np.array(i).mean() for i in inputs]])
+            predictions = np.array([[np.array(X).mean() for i in inputs]])
         elif model_path == "last_value":
             predictions = [inputs[:, -1, 0]]
         elif model_path == "gaussian_random":
             predictions = [np.random.normal(0, 1, len(inputs))]
 
         print(
-            f"{bcolors.HEADER}Start index: {start}\nStart padding shape: {np.array([nirs[i, 0] for i in range(start)]).shape}\nEvaulation shape: {np.array(np.concatenate(predictions)).flatten().shape}{bcolors.ENDC}")
+            f"{bcolors.HEADER}Start index: {start}\nStart padding shape: {np.array([nirs[i, 0] for i in range(start)]).shape}\nEvaluation shape: {np.array(np.concatenate(predictions)).flatten().shape}{bcolors.ENDC}")
 
         df[f"Prediction_{idx}_{futures[idx]}"] = np.concatenate(
             ([np.NaN for i in range(start)], np.array(np.concatenate(predictions)).flatten()))
@@ -106,13 +115,10 @@ if __name__ == "__main__":
         "data/snirf/pretrain_3.snirf",
         2000, 2200,
         model_paths=[
-            "models/model-lstm-3-16.h5",
-            "models/model-lstm-3-4.h5",
-            "models/model-lstm-16.h5",
-            "models/model-lstm-4.h5",
-            "models/model-dense-16.h5",
-            "models/model-dense-4.h5",
-            "mean",
             "last_value",
+            "models/model-dense.h5",
+            "models/model-lstm.h5",
+            "models/model-lstm-3.h5",
+            "mean",
         ],
-        futures=[16, 4, 16, 4, 16, 4, 16, 16])
+        futures=[16, 16, 16, 16, 16])

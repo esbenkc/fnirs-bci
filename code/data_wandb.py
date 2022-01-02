@@ -106,5 +106,5 @@ if __name__ == "__main__":
     # save_runs("esbenkran/thought_classification", "data/analysis/pretraining.csv",
     #           {"sweep": {"$in": ["8qp1jtu0", "1iubvmc2"]}})
 
-    save_runs("esbenkran/thought_classification", "data/analysis/transfer_learning.csv",
-              {"sweep": {"$in": ["g3zov98e", "sb135301"]}})
+    # save_runs("esbenkran/thought_classification", "data/analysis/transfer_learning.csv",
+    #           {"sweep": {"$in": ["g3zov98e", "sb135301"]}})

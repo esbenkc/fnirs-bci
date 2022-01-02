@@ -1,0 +1,155 @@
+
+
+```{r}
+pacman::p_load(tidyverse)
+```
+
+```{r}
+df <- read_csv("data/pretrain_1_raw.csv")
+```
+
+
+$$OD = -1 \cdot log\left(\dfrac{x}{\dfrac{1}{N}\sum{x}}\right)$$
+$$BL=I_D=I_Se^{-\mu_aL}$$
+Photon travel is different so we sum over all the paths. We approximate that by approximating the sum as a function $G(\mu_s,P)$. $<L>$ as avg pathlength.
+
+We then approximate the pathlength with the short-detector separation distance. DPF is greater than 1 and is the multiplier on $\rho$ to say how much longer it is on average.
+
+Then the equation is $I_D(t) =I_SG(\mu_S',\rho)e^{-\mu_{a\Phi}DPF*\rho}$ and there is much of that that is constant. Therefore, we end up with:
+
+$$mBL: \dfrac{I_D(t)}{I_D(t=0)}=e^{-\Delta\mu_a(t)}\cdot DPF\cdot \rho$$
+
+$\rho$ and $DPF$ are known along with $I_D(t)$ and $I_D(t=0)$ so we can solve for $\Delta\mu_a(t)$.
+
+$\Delta\mu_a(t)$ is the variation of absorbance so we're very much interested in this.
+
+$$\Delta OD=-log\left(\dfrac{I(t)}{I^0}\right)\approx \langle L\rangle\Delta \mu_ a(t)+\left(\dfrac{\mu_a^0}{\mu_s'^0}\right)\cdot \langle L\rangle\Delta \mu_ a'(t)\approx \langle L\rangle\Delta \mu_a(t)$$
+
+$$\Delta \mu_a(t) = \dfrac {\Delta OD}{\langle L\rangle}=\dfrac{\Delta OD}{DPF\cdot\rho}$$
+
+$$\langle L \rangle = \dfrac{\Delta OD^0}{\Delta \mu_a}$$
+
+    hbo   hb
+760 586	  1548.52000000000
+850 1058	691.320000000000
+
+abs_coef =
+[[HbO2(freq1), Hb(freq1)],
+ [HbO2(freq2), Hb(freq2)]]
+
+abs_coef * distance_at_channel * dpf
+pseudo-inverse matrix transform of the above
+
+Matrix multiplying with the inverse is like division: $A \times A^{-1}=1$.
+
+EL = abs_coef * distances[ii] * ppf
+iEL = linalg.pinv(EL)
+
+raw._data[[ii, ii + 1]] = iEL @ raw._data[[ii, ii + 1]] * 1e-3
+
+The above does the following:
+- Takes the hbo and hbr channel and divides it by $\rho$ and 1000
+
+Why use inverse matrix for multiplication: 
+- We cannot divide matrices
+- $XA=B$, solving for X in the previous, we cannot just divide by A
+- $XI=BA^{-1}=X$ gives us the correct result - will not work if $BA$ do not have the proper dimensions
+- We have to place $A^{-1}$ at the proper spot because matrix multiplication is sequence determinant
+  - $AX=B\Rightarrow A^{-1}X=A^{-1}B$
+- $(BA)^{-1}=A^{-1}B^{-1}$
+
+$$\begin{bmatrix}\Delta c_{HbO}(t) \\ \Delta c_{HbR}(t)\end{bmatrix} 
+= 
+\begin{bmatrix}\alpha_{HbO}(\lambda_1) & \alpha_{HbR} (\lambda_1) \\ \alpha_{HbO} (\lambda_2) & \alpha_{HbR} (\lambda_2) \end{bmatrix}^{-1}
+\begin{bmatrix}\Delta A(t, \lambda_1) \\ \Delta A(t, \lambda_2)\end{bmatrix}
+\dfrac{1}{l\times d}$$
+
+$$\dfrac{1}{hbo760\cdot hbr850 - hbr760\cdot hbo850}\begin{bmatrix}hbr850&-hbr760\\-hbo850&hbo760\end{bmatrix}\times\begin{bmatrix}760 & 0.9&...&-0.2\\850&-0.03&...&0.2\end{bmatrix}$$
+
+$$\begin{bmatrix}hbo760&hbr760\\hbo850&hbr850\end{bmatrix}$$
+
+
+```{r}
+pacman::p_load(matlib, dplR, qdap)
+
+freqs = c(760, 850)
+dpf = 6
+hb_ext = c(586, 1058, 1548.52, 691.32)
+hb_abs = hb_ext * 0.2303
+hbo_760 = hb_abs[1]
+hbo_850 = hb_abs[2]
+hbr_760 = hb_abs[3]
+hbr_850 = hb_abs[4]
+
+mu = 
+
+p = read_csv("data/distances.csv") %>% 
+  select(p = "0") %>% 
+  mutate(channel = colnames(df %>% select(matches("S\\d*")))) %>% 
+  select(channel, p)
+
+df_od <- df %>% 
+  select(-c("X1", "time")) %>% 
+  mutate(across(where(is.numeric), ~ -log(.x / mean(.x))))
+```
+$$\begin{bmatrix}\Delta c_{HbO}(t) \\ \Delta c_{HbR}(t)\end{bmatrix} 
+= 
+\begin{bmatrix}\alpha_{HbO}(\lambda_1) & \alpha_{HbR} (\lambda_1) \\ \alpha_{HbO} (\lambda_2) & \alpha_{HbR} (\lambda_2) \end{bmatrix}^{-1}
+\begin{bmatrix}\Delta A(t, \lambda_1) \\ \Delta A(t, \lambda_2)\end{bmatrix}
+\dfrac{1}{\rho\times dpf}$$
+
+where ΔA(t; λj) (j = 1,2) is the unit-less absorbance (optical density) variation of wavelength λj, αHbX(λj)is the extinction coefficient of HbX in μM−1 mm−1 (note that HbX ∊ {HbO, HbR}), d is the unit-less differential pathlength factor (DPF), and l is the distance (in millimeters) between an emitter and a detector.
+
+```{r}
+df_hb <- df_od %>%
+  pivot_longer(cols=matches("S\\d*"), names_to="channel", values_to="signal") %>%
+  # group_by(channel) %>% 
+  mutate(
+    distance = channel %l% data.frame(p$channel, p$p),
+    w760 = str_detect(channel, "760"),
+    signal = signal / (dpf * distance * hbo_760)
+  )
+  mutate(across(select(matches("S\\d*760")), ~ .x/(dpf * ))
+
+         # mutate(across(where(is.numeric), ~ pass.filt(.x, W=c(0.01,0.7),type="pass")))
+
+df_hb %>%
+  mutate(row = as.numeric(rownames(df_od))) %>% 
+  select(row, everything()) %>%
+  pivot_longer(cols=matches("S\\d*"), names_to="channel", values_to="signal") %>%
+  mutate(hb = if_else(str_detect(channel, "760"), "hbr", "hbo")) %>% 
+  filter(row > 400 & row < 439) %>% 
+  group_by(channel) %>% 
+  filter(!any(signal > 0.3)) %>% 
+  ggplot() +
+  aes(x = row, y = signal, color = hb, group = channel) +
+  geom_line() +
+  coord_cartesian( clip="off") +
+  theme_minimal()
+
+df_hb
+
+```
+
+
+```{r}
+EL = matrix(hb_abs, ncol=2)
+iEL = inv(EL)
+
+ModifiedBeerLambertLaw <- function(df) {
+  for(i in 1:(length(colnames(df)))) {
+    if ((i+1) %% 2 == 0) {
+      col_760 = colnames(df)[i]
+      col_850 = colnames(df)[i+1]
+      
+      eval_matrix = t(as.matrix(df_od[c(col_760, col_850)]))
+      df_haemo <- as.data.frame(t(as.matrix(iEL %*% eval_matrix))*100000)
+      
+      df[,col_760] <- df_haemo[,1]
+      df[,col_850] <- df_haemo[,2]
+    }
+  }
+  return(as_tibble(df))
+}
+```
+

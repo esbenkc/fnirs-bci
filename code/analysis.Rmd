@@ -13,11 +13,11 @@ sweep_16 = read_csv("../data/analysis/16_sweep.csv")
 stacked_16 = read_csv("../data/analysis/stack_lstm.csv")
 transfer_16 = read_csv("../data/analysis/16_transfer_sweep.csv") %>% 
   mutate(pretrainable = paste0(pretrained, trainable))
-stack_transfer_freeze = read_csv("../data/analysis/thought_classification.csv") %>% 
+stack_transfer_freeze = read_csv("../data/analysis/transfer_learning.csv") %>% 
   mutate(layers_transferred = factor(layers_transferred))
 
 stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
-  group_by(bci_task, layers_transferred, trainable, repetitions) %>%
+  group_by(run_id) %>%
   summarise(
     best_val_loss = mean(best_val_loss),
     val_loss_last = last(val_loss),
@@ -26,8 +26,12 @@ stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
     val_loss_10 = nth(val_binary_crossentropy, 10),
     val_loss_25 = nth(val_binary_crossentropy, 25),
     val_loss_100 = nth(val_binary_crossentropy, 100),
-    bci_task = last(str_extract(bci_task, "(?<=/bci_task_\\d_)[1-3a-z_]+(?=.snirf)"))
+    bci_task = last(str_extract(bci_task, "(?<=/bci_task_\\d_)[1-3a-z_]+(?=.snirf)")),
+    layers_transferred = last(layers_transferred),
+    trainable = last(trainable),
+    model = last(model)
   ) %>% 
+  filter(model == "models/model-lstm-3.h5") %>% 
   group_by(bci_task, layers_transferred, trainable) %>% 
   summarise(
     sd_best_val_loss = sd(best_val_loss, na.rm=T),
@@ -55,7 +59,8 @@ stack_transfer_freeze_pivot <- stack_transfer_freeze %>%
     trainable = fct_relevel(trainable, c("Yes", "No")),
     train_loss = factor(paste0(trainable, val_loss)))
 
-stack_transfer_freeze_pivot %>% 
+
+p <- stack_transfer_freeze_pivot %>% 
   filter(val_loss%in%c("val_loss_last")) %>% 
   ggplot() +
   aes(color=val_loss, fill=val_loss, linetype=trainable, label = round(mean, 2), x=layers_transferred, y=mean, ymin=mean - sd, ymax = mean + sd) +
@@ -177,3 +182,5 @@ df_grouped %>%
   ) %>% 
   select(learned, everything())
 ```
+
+
