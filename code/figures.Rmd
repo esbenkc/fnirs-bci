@@ -158,10 +158,11 @@ ggsave(paste0(output_dir, "2_prediction_example.png"), p, units="px", width=2056
 
 ## Learning of pre-training
 ```{r}
-df <- read_csv("../data/analysis/pretraining.csv")
+df <- read_csv("../data/analysis/dense.csv") %>% 
+  rbind(read_csv("../data/analysis/lstm.csv")) %>% 
+  rbind(read_csv("../data/analysis/lstm-3.csv"))
 
-p <- df %>% 
-  filter(batch_size==512) %>% 
+p <- df %>%  
   group_by(run_id) %>% 
   summarise(
     val_mean_absolute_error = val_mean_absolute_error,
@@ -176,9 +177,9 @@ p <- df %>%
   ) %>% 
   ggplot() +
   aes(step, mean_val, ymin = min_val, ymax = max_val, color = architecture, fill = architecture) +
-  geom_ribbon(alpha=0.1) +
+  # geom_ribbon(alpha=0.1) +
   geom_line() +
-  coord_cartesian(expand=F, ylim = c(0,0.71), xlim=c(0,130))+
+  coord_cartesian(expand=F, ylim = c(0,0.71), xlim=c(0,89))+
   theme_bw() +
   # guides(color=guide_legend(ncol=2)) +
   theme(

@@ -33,8 +33,13 @@ def save_run(run, path):
     append["l_pass"] = run.config.get("l_pass")
     append["layers_transferred"] = run.config.get("layers_transferred")
     append["bci_task"] = run.config.get("bci_task")
+    append["repetitions"] = run.config.get("repetitions")
     append["architecture"] = run.config.get("architecture")
     append["pretrain_dense_units"] = run.config.get("pretrain_dense_units")
+    append["test_channel"] = run.config.get("test_channel")
+    append["model"] = run.config.get("model")
+    append["n_augmentations"] = run.config.get("n_augmentations")
+    append["dense_units"] = run.config.get("dense_units")
 
     print(f"{bcolors.HEADER}Saving run history {run.id} to {path}.{bcolors.ENDC}")
     append.to_csv(path)
@@ -108,3 +113,10 @@ if __name__ == "__main__":
 
     # save_runs("esbenkran/thought_classification", "data/analysis/transfer_learning.csv",
     #           {"sweep": {"$in": ["g3zov98e", "sb135301"]}})
+
+    save_run("esbenkran/thought_classification/18sb2xx0",
+             "data/analysis/dense.csv")
+    save_run("esbenkran/thought_classification/2x3e0v0x",
+             "data/analysis/lstm.csv")
+    save_run("esbenkran/thought_classification/24orv839",
+             "data/analysis/lstm-3.csv")
