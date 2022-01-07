@@ -9,9 +9,9 @@ I perform self-supervised training (LeCun & Misra, 2021) to pre-train a machine 
 
 Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6o6eoKkA).
 
-#### Table of contents
+### Table of contents
 - [🧠 fNIRS BCI Voyage](#-fnirs-bci-voyage)
-      - [Table of contents](#table-of-contents)
+    - [Table of contents](#table-of-contents)
   - [Results](#results)
   - [Reproduce this work](#reproduce-this-work)
   - [Structure](#structure)
