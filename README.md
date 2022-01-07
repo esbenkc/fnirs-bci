@@ -8,6 +8,24 @@ Assessing the benefit of pre-training a thought classification model using neura
 I perform self-supervised training (LeCun & Misra, 2021) to pre-train a machine learning model using the LSTM architecture (Hochreiter & Schmidhuber, 1997) on functional near-infrared spectroscopic (fNIRS) neuroimaging data (Naseer & Hong, 2015) from the NIRx NIRSport2 system (NIRx, 2021) and transfer and fine-tune it for a BCI thought classification task (Yoo et al., 2018) as is done with language models (C. Sun et al., 2019). As far as I am aware, this is the first example of such work.
 
 Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6o6eoKkA).
+
+- [🧠 fNIRS BCI Voyage](#-fnirs-bci-voyage)
+  - [Results](#results)
+  - [Reproduce this work](#reproduce-this-work)
+  - [Structure](#structure)
+  - [Meta](#meta)
+  - [About Esben Kran](#about-esben-kran)
+
+## Results
+
+The 1-layer LSTM, 3-layer LSTM and dense pre-trained models were trained to predict the brain activity in channel 1 4.2 seconds in the future given 10 seconds of data. These were highly succesful and LSTMs performed much better than the fully-connected and the designed baseline (fig. 3).
+
+The model weights were transferred and the last layer was replaced with a 256 dense layer and a sigmoid binary classifier. These underfit horribly but the pre-training avoided extreme overfitting (fig. 4).
+
+|Figure 3 |Figure 4 |
+|-|-|
+|![figure 3](media/figures/figure%203.png) A) Predictions based on continuous real data for the three pre-trained models, B) Performance of the different models and the last-value baseline on all validation data, C) the three models’ mean absolute error on the test dataset (notice that the LSTMs learn more than the Dense model)|![figure 4](media/figures/figure%204.png) A) Validation loss at the last (250th) subtracted by the first step’s validation loss at different amounts of layers transferred with the LSTM-3 model. Positive numbers mean the model has become worse. B) The performance on the training and test set for the different models either pre-trained or not|
+
 ## Reproduce this work
 ![badge](https://img.shields.io/badge/7\/10-ease%20of%20use-informational)
 
