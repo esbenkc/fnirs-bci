@@ -1,6 +1,6 @@
 # 🧠 fNIRS BCI Voyage
 ![badge](https://img.shields.io/badge/thesis-work-informational) 
-![badge](https://img.shields.io/badge/reproducible-reproducibility-brightgreen)
+![badge](https://img.shields.io/badge/yes-reproducibility-brightgreen)
 ![badge](https://img.shields.io/badge/in%20progress-status-yellow)
 
 Assessing the benefit of pre-training a thought classification model using neural prediction with an LSTM. [Read the paper](Lights%20in%20the%20Brain.pdf).
@@ -9,7 +9,7 @@ I perform self-supervised training (LeCun & Misra, 2021) to pre-train a machine 
 
 Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6o6eoKkA).
 ## Reproduce this work
-![badge](https://img.shields.io/badge/reproducible-status-brightgreen)
+![badge](https://img.shields.io/badge/7\/10-clean-brightgreen)
 
 | File name                                         | Description                                                                                                                                                       |
 |---------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
