@@ -9,7 +9,7 @@ I perform self-supervised training (LeCun & Misra, 2021) to pre-train a machine 
 
 Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6o6eoKkA).
 ## Reproduce this work
-![badge](https://img.shields.io/badge/7\/10-clean-brightgreen)
+![badge](https://img.shields.io/badge/7\/10-ease\-of\-use-green)
 
 | File name                                         | Description                                                                                                                                                       |
 |---------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
