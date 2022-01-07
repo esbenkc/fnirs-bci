@@ -3,7 +3,9 @@
 ![badge](https://img.shields.io/badge/reproducible-reproducibility-brightgreen)
 ![badge](https://img.shields.io/badge/in%20progress-status-yellow)
 
-Assessing the benefit of pre-training with an LSTM. Specifically, I pre-train a machine learning model self-supervised (LeCun & Misra, 2021) using the LSTM architecture (Hochreiter & Schmidhuber, 1997) on functional near-infrared spectroscopic (fNIRS) neuroimaging data (Naseer & Hong, 2015) from the NIRx NIRSport2 system (NIRx, 2021) and transfer and fine-tune it for a BCI thought classification task (Yoo et al., 2018) as is done with language models (C. Sun et al., 2019). As far as I know, this is the first example of such work.
+Assessing the benefit of pre-training a thought classification model using neural prediction with an LSTM. [Read the paper](Lights%20in%20the%20Brain.pdf).
+
+I perform self-supervised training (LeCun & Misra, 2021) to pre-train a machine learning model using the LSTM architecture (Hochreiter & Schmidhuber, 1997) on functional near-infrared spectroscopic (fNIRS) neuroimaging data (Naseer & Hong, 2015) from the NIRx NIRSport2 system (NIRx, 2021) and transfer and fine-tune it for a BCI thought classification task (Yoo et al., 2018) as is done with language models (C. Sun et al., 2019). As far as I am aware, this is the first example of such work.
 
 Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6o6eoKkA).
 ## Reproduce this work
@@ -23,6 +25,7 @@ Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6
 | [`analysis.Rmd`](code/analysis.Rmd)                                     | ✍ Simple analyses and unstructured code.           |
 | [`pipeline_math.Rmd`](code/pipeline_math.Rmd)                           | ✍ Goes through an unstructured explanation of the math implemented in R.           |
 
+## Structure
 - [Data](/data)
   - [Analysis](/data/analysis): Datasets used in [`analysis.rmd`](code/analysis.Rmd), [`figures.rmd`](code/figures.Rmd) and [`pipeline_math.rmd`](code/pipeline_math.Rmd)
   - [Datasets](/data/datasets): Generated train/test datasets as `.npy` from [`generate_augmented_datasets.py`](code/generate_augmented_datasets.py) (excluded by `.gitignore`)
@@ -41,5 +44,4 @@ Accompanies a [YouTube series](https://www.youtube.com/channel/UCvgUdk8C-PGobbY6
 
 
 ## About Esben Kran
-See [my website](https://kran.ai). I study Cognitive Science at Aarhus University in Denmark and lead NeuroTechX Denmark, work with fNIRS in general, am interested in scientific ethics and love entrepreneurship. I teach the course Cognition and Communication.
-
+See [my website](https://kran.ai). I study Cognitive Science at Aarhus University in Denmark and co-lead NeuroTechX Denmark, work with fNIRS in general, am interested in scientific ethics and love entrepreneurship. Currently resided in the Bay Area.
