@@ -1,4 +1,4 @@
-# 🧠 fNIRS BCI Voyage
+# 🧠 fNIRS BCI
 ![badge](https://img.shields.io/badge/thesis-work-informational) 
 ![badge](https://img.shields.io/badge/yes-reproducibility-brightgreen)
 ![badge](https://img.shields.io/badge/ready-status-yellow)
