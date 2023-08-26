@@ -5,14 +5,68 @@ date: "4th of January"
 ---
 
 ```{r}
-pacman::p_load(tidyverse, R.matlab, showtext, viridis, purrr, ggrepel, png, grid, ggthemes, forcats, zoo)
+pacman::p_load(tidyverse, R.matlab, showtext, viridis, purrr, ggrepel, png, grid, ggthemes, forcats, zoo, gganimate)
 font_add_google("Inter", "Inter")
 output_dir = "../media/figures/"
+```
+
+## Animation for the website
+```{r}
+df <- read_csv("../data/analysis/bci_task_epochs.csv", progress=F)
+# Filter and transform the data
+
+unique_values <- c("S1_D1", "S1_D2", "S1_D17", "S2_D4")
+
+df_filtered <- df %>% 
+  select(epoch, condition, `S1_D1 hbo`, `S1_D1 hbr`, `S1_D2 hbo`, `S1_D2 hbr`, `S1_D17 hbo`, `S1_D17 hbr`, `S2_D4 hbo`, `S2_D4 hbr`) %>%
+  mutate(time = row_number() - ((epoch / 2 - 0.5) * 39), row = row_number()) %>% 
+  filter(epoch < 20) %>% 
+  gather(key = "channel", value = "value", -epoch, -time, -row, -condition) %>% 
+  mutate(hb = if_else(str_detect(channel, "hbo"), "hbo", "hbr")) %>% 
+  mutate(pair = str_remove(channel, "hbo|hbr")) %>% 
+  mutate(encoded_pair = as.integer(factor(pair)))
+
+df_epochs <- 
+  df_filtered %>%
+  group_by(epoch, condition) %>% 
+  summarise(x = first(row)) %>% 
+  mutate(condition = if_else(condition == "Talking", "Speech", "Movement"))
+
+p <- ggplot(df_filtered, aes(x = row, group = channel, y = value +  (50 * encoded_pair), label = channel, color = hb)) +
+  # geom_vline(aes(xintercept = (epoch / 2 - 0.5) * 39), color = "lightgrey") +
+  geom_point(size = 0.3) +
+  geom_line(size=0.2) +
+  geom_text(hjust=0, nudge_x = 2) +
+  labs(title = NULL, x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(
+    plot.margin = margin(4,0,0,0),
+    panel.grid = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    panel.spacing = unit(0, "cm"),
+    legend.position = "none"
+  ) +
+  coord_cartesian(expand=F, clip = "off") +
+  scale_color_manual(values = c("hbo" = "black", "hbr" = "#fb3980")) +
+  geom_vline(data=df_epochs %>% filter(epoch != 1), aes(xintercept=x, group = NULL, color = NULL), alpha=0.1, linetype="solid")
+  #geom_text(data=df_epochs, aes(x=x+2, y = 240, label=condition, group = NULL, color = NULL), hjust=0, alpha=0.6)
+
+anim <- p +
+  transition_reveal(row) +
+  enter_fade() +
+  exit_fade()
+
+gganimate::save_animation(animate(anim, nframes = 200, height = 150, width = 1000), "waves-by-time.gif")
+
 ```
 
 
 ## HbO and HbR absorption spectra
 ```{r}
+
 p <- readMat("../data/extinction_coef.mat")[1]$extinct.coef %>% 
   as_tibble %>% 
   select("lambda" = V1, HbO = V2, HbR = V3) %>% 
@@ -242,7 +296,7 @@ ggsave(paste0(output_dir, "2_pretrain_performance.png"), p, units="px", width=10
 
 ## Vis of fNIRS data
 ```{r}
-df <- read_csv("../data/visualization/prediction_example.csv", progress=F)
+df <- read_csv("../data/visualization/prediction_plot.csv", progress=F)
 
 p <- df %>% 
   ggplot() +
